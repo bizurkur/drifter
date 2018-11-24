@@ -82,3 +82,7 @@ class Config(object):
     def remove_machine(self, name):
         if name in self.data['machines']:
             del self.data['machines'][name]
+
+    def get_machine(self, name):
+        if name in self.data['machines']:
+            return self.data['machines'][name]

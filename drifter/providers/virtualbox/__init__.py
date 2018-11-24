@@ -23,7 +23,7 @@ def virtualbox(ctx):
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
 @click.option('--ports', help='Ports to forward.')
-@click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=False, show_default=True)
+@click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
 @commands.pass_config
 @providers.pass_provider
 def up(provider, config, name, base, memory, head, mac, ports):
@@ -49,6 +49,16 @@ def up(provider, config, name, base, memory, head, mac, ports):
         config.save()
 
         provider.clone_from(base)
+
+    settings = config.get_machine(name)
+    if head is None:
+        head = not settings.get('headless', True)
+    if not memory:
+        memory = settings.get('memory', None)
+    if not mac:
+        mac = settings.get('network', {}).get('mac', None)
+    if not ports:
+        ports = settings.get('network', {}).get('ports', None)
 
     provider.start(head, memory, mac, ports)
 
