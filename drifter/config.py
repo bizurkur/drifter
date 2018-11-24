@@ -86,3 +86,13 @@ class Config(object):
     def get_machine(self, name):
         if name in self.data['machines']:
             return self.data['machines'][name]
+
+        raise Exception('Machine "%s" does not exist.' % (name))
+
+    def get_provider(self, name):
+        settings = self.get_machine(name)
+        provider = settings.get('provider', None)
+        if not provider:
+            raise Exception('No provider set for "%s" machine.' % (name))
+
+        return provider

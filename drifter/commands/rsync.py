@@ -8,9 +8,10 @@ import providers
     'allow_extra_args': True
 })
 @commands.name_argument
-@commands.provider_option
+@commands.pass_config
 @click.pass_context
-def rsync(ctx, name, provider):
+def rsync(ctx, config, name):
     """Remotely synchronizes files to a machine."""
 
+    provider = config.get_provider(name)
     providers.invoke_provider_context(ctx, provider, [name] + ctx.args)

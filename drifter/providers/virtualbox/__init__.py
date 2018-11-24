@@ -64,10 +64,16 @@ def up(provider, config, name, base, memory, head, mac, ports):
 
 @virtualbox.command()
 @commands.name_argument
+@commands.force_option
 @commands.pass_config
 @providers.pass_provider
-def destroy(provider, config, name):
+def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
+
+    config.get_machine(name)
+
+    if not force:
+        commands.confirm_destroy(name)
 
     click.secho('Destroying machine "%s"...' % (name), bold=True)
 
@@ -79,9 +85,12 @@ def destroy(provider, config, name):
 
 @virtualbox.command()
 @commands.name_argument
+@commands.pass_config
 @providers.pass_provider
-def halt(provider, name):
+def halt(provider, config, name):
     """Halts a VirtualBox machine."""
+
+    config.get_machine(name)
 
     click.secho('Halting machine "%s"...' % (name), bold=True)
 

@@ -28,6 +28,9 @@ provider_option = click.option(
     help='Which provider to use.'
 )
 
+def confirm_destroy(name):
+    click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=True)
+
 def pass_config(f):
     @click.pass_context
     def new_func(ctx, *args, **kwargs):

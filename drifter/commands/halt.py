@@ -8,9 +8,10 @@ import providers
     'allow_extra_args': True
 })
 @commands.name_argument
-@commands.provider_option
+@commands.pass_config
 @click.pass_context
-def halt(ctx, name, provider):
+def halt(ctx, config, name):
     """Halts up a machine."""
 
+    provider = config.get_provider(name)
     providers.invoke_provider_context(ctx, provider, [name] + ctx.args)
