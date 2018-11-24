@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from time import sleep
 import vboxapi
 
@@ -52,10 +53,6 @@ class Provider(object):
         # Give it a moment to release the lock
         sleep(.5)
 
-        if self.machine.sessionState != self.manager.constants.SessionState_Unlocked:
-            while self.machine.sessionState != self.manager.constants.SessionState_Unlocked:
-                sleep(1)
-
         logging.debug('Lock released.')
 
     def is_running(self):
@@ -72,16 +69,46 @@ class Provider(object):
         logging.debug('Machine is running.')
         return True
 
-    def create(self, name, base, memory):
-        self._create_machine(name)
+    def create(self, name):
+        logging.debug('Creating machine...')
 
-        # stack['id'] = self.machine.id
-        #
-        # self.config.add_stack(stack)
-        # self.config.save()
+        # TODO: Ubuntu should not be hard-coded.
+        # This metadata is apparently available in the base dir.
+        self.machine = self.vbox.createMachine('', name, [], 'Ubuntu_64', '')
 
-        self._create_disk_clones(base)
-        self._create_save(memory)
+        logging.debug('Registering machine...')
+        try:
+            self.vbox.registerMachine(self.machine)
+        except Exception as e:
+            # cleanup any config data that was saved
+            logging.debug('Registration failed. Cleaning up config...')
+            try:
+                progress = self.machine.deleteConfig([])
+                progress.waitForCompletion(-1)
+            except Exception as e_:
+                pass
+
+            raise e
+
+    def clone_from(self, base):
+        logging.debug('Creating disk clones...')
+
+        disks = []
+        for path in os.listdir(base):
+            filename = os.path.join(base, path)
+            if not os.path.isfile(filename):
+                continue
+
+            if filename.endswith('.vmdk') or filename.endswith('.vdi'):
+                disks.append(filename)
+
+        portCount = len(disks)
+        storage = self._create_storage(portCount)
+
+        port = 0
+        for disk in disks:
+            self._create_disk_clone(disk, storage, port)
+            port += 1
 
     def destroy(self):
         logging.debug('Destroying machine...')
@@ -109,12 +136,13 @@ class Provider(object):
             )
         logging.debug('Files deleted.')
 
-    def start(self, head=False, mac=None, ports=None):
+    def start(self, head=False, memory=None, mac=None, ports=None):
         logging.debug('Starting machine...')
         if self.is_running():
             return True
 
         if self.machine.state != self.manager.constants.MachineState_Saved:
+            self._set_boot(memory)
             self._configure_networks(mac)
             self._forward_ports(ports)
 
@@ -134,8 +162,6 @@ class Provider(object):
             raise e
         finally:
             self.release_lock()
-
-        # self.config.save()
 
     def stop(self):
         logging.debug('Stopping machine...')
@@ -157,112 +183,6 @@ class Provider(object):
 
         logging.debug('Machine stopped.')
         return True
-
-    # def ssh(self):
-    #
-    #     servers = self.get_command('servers')
-    #     running_servers = servers.get_running_servers(self, parsed_args, settings)
-    #
-    #     server = running_servers[0]
-    #
-    #     base_command = ['ssh']
-    #     if not ssh.get('verify_host_key', False):
-    #         base_command += [
-    #             '-o',
-    #             'StrictHostKeyChecking=no',
-    #             '-o',
-    #             'LogLevel=ERROR',
-    #             '-o',
-    #             'UserKnownHostsFile=/dev/null'
-    #         ]
-    #
-    #     private_key = ssh.get('private_key_path', None)
-    #     if private_key:
-    #         base_command += ['-i', private_key]
-    #
-    #     if parsed_args.command:
-    #         is_verbose = not parsed_args.quiet
-    #
-    #         command = parsed_args.command
-    #         if parsed_args.filename:
-    #             command = command.replace('{}', '"%s"' % ('" "'.join(parsed_args.filename)))
-    #
-    #         command_server_list = []
-    #         command_response_list = []
-    #
-    #         if parsed_args.all:
-    #             command_server_list = running_servers
-    #         else:
-    #             command_server_list = [server]
-    #
-    #         for command_server in command_server_list:
-    #             ssh_command = base_command + pass_thru
-    #             ssh_command += [
-    #                 '%s@%s' % (command_server['username'], command_server['host_ip']),
-    #                 '-p',
-    #                 server['port'],
-    #                 command,
-    #             ]
-    #
-    #             self.trigger_hook('ssh.command.before', parsed_args, args=ssh_command, server=command_server)
-    #
-    #             res, code = self.get_command_line_response(
-    #                 ssh_command,
-    #                 is_verbose
-    #             )
-    #             command_response_list.append((res, code))
-    #
-    #             self.trigger_hook('ssh.command.after', parsed_args, args=ssh_command, server=command_server)
-    #
-    #         return command_response_list
-    #
-    #     ssh_args = base_command + pass_thru
-    #     ssh_args += ['%s@%s' % (server['username'], server['host_ip']), '-p', server['port']]
-    #
-    #     self.trigger_hook('ssh.connect', parsed_args, args=ssh_args, server=server)
-    #
-    #     return os.execvp('ssh', map(str, ssh_args))
-
-    def _create_machine(self, name):
-        logging.debug('Creating machine...')
-
-        # TODO: Ubuntu should not be hard-coded.
-        # This metadata is apparently available in the base dir.
-        self.machine = self.vbox.createMachine('', name, [], 'Ubuntu_64', '')
-
-        logging.debug('Registering machine...')
-        try:
-            self.vbox.registerMachine(self.machine)
-        except Exception as e:
-            # cleanup any config data that was saved
-            logging.debug('Registration failed. Cleaning up config...')
-            try:
-                progress = self.machine.deleteConfig([])
-                progress.waitForCompletion(-1)
-            except Exception as e_:
-                pass
-
-            raise e
-
-    def _create_disk_clones(self, base):
-        logging.debug('Creating disk clones...')
-
-        disks = []
-        for path in os.listdir(base):
-            filename = os.path.join(base, path)
-            if not os.path.isfile(filename):
-                continue
-
-            if filename.endswith('.vmdk') or filename.endswith('.vdi'):
-                disks.append(filename)
-
-        portCount = len(disks)
-        storage = self._create_storage(portCount)
-
-        port = 0
-        for disk in disks:
-            self._create_disk_clone(disk, storage, port)
-            port += 1
 
     def _create_storage(self, portCount):
         logging.debug('Creating storage...')
@@ -344,8 +264,11 @@ class Provider(object):
         finally:
             self.release_lock()
 
-    def _create_save(self, memory):
+    def _set_boot(self, memory):
         logging.debug('Saving machine settings...')
+
+        if not memory:
+            memory = 512
 
         try:
             self.acquire_lock()
@@ -435,8 +358,6 @@ class Provider(object):
         finally:
             self.release_lock()
 
-        # self.config.set_stack_config('network.nat.ports', self._merge_ports(port_list))
-
     def _merge_ports(self, ports):
         return ','.join(
             ['%s:%s:%s' % (port['host'], port['guest'], port.get('protocol', 'tcp')) for port in ports]
@@ -509,21 +430,5 @@ class Provider(object):
         return port_list
 
     def _get_collision_free_port(self, port):
-        # for stack in self.config.get_stacks():
-        #     if self.config.get_stack_id() == stack['id']:
-        #         continue
-        #
-        #     ports = stack.get('network.nat.ports', None)
-        #     if not ports:
-        #         continue
-        #
-        #     try:
-        #         stack_ports = parse_ports(self, ports)
-        #     except Exception:
-        #         continue
-        #
-        #     for stack_port in stack_ports:
-        #         if port == stack_port['host']:
-        #             return get_collision_free_port(self, port + 1)
-
+        # TODO: Fix this.
         return port

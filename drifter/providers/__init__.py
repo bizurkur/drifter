@@ -1,6 +1,14 @@
 from __future__ import print_function, absolute_import, division
 import os
+from functools import update_wrapper
 import click
+
+def pass_provider(f):
+    @click.pass_context
+    def new_func(ctx, *args, **kwargs):
+        return ctx.invoke(f, ctx.obj['provider'], *args, **kwargs)
+
+    return update_wrapper(new_func, f)
 
 def get_providers():
     providers = []

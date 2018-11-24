@@ -1,5 +1,6 @@
 from __future__ import print_function, absolute_import, division
 import difflib
+from functools import update_wrapper
 import os
 import click
 import providers
@@ -26,6 +27,13 @@ provider_option = click.option(
     show_default=True,
     help='Which provider to use.'
 )
+
+def pass_config(f):
+    @click.pass_context
+    def new_func(ctx, *args, **kwargs):
+        return ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
+
+    return update_wrapper(new_func, f)
 
 def get_commands():
     all = []
