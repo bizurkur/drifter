@@ -11,7 +11,7 @@ import providers
 @commands.pass_config
 @click.pass_context
 def halt(ctx, config, name):
-    """Halts up a machine."""
+    """Halts a machine."""
 
     provider = config.get_provider(name)
     providers.invoke_provider_context(ctx, provider, [name] + ctx.args)
