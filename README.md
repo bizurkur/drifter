@@ -34,16 +34,6 @@ To use it:
 More docs will be added as commands get completed.
 
 
-# Autocompletion
-
-To enable Bash autocompletion:
-
-    _DRIFTER_COMPLETE=source drifter > drifter-complete.sh
-
-Then add this line to your .bashrc file:
-
-    . /path/to/drifter-complete.sh
-
 ----
 
 # Commands
@@ -163,3 +153,14 @@ The `name` argument specifies the name of the machine to halt.
 The base machine should create a `drifter` user and set up the default SSH keys.
 
 TODO: Add more to this later.
+
+
+# Autocompletion
+
+To enable Bash autocompletion:
+
+    $ _DRIFTER_COMPLETE=source drifter > drifter-complete.sh
+
+Then add this line to your .bashrc file:
+
+    . /path/to/drifter-complete.sh
