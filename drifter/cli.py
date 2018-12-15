@@ -10,6 +10,15 @@ from util.exceptions import DrifterException
 __version__ = '0.0.1'
 __author__ = 'Luke Kingsley'
 
+def run():
+    try:
+        main()
+    except KeyboardInterrupt as e:
+        print()
+    except DrifterException as e:
+        message = getattr(e, 'msg', e.message)
+        click.secho('ERROR: %s' % (message), bold=True, fg='red')
+
 def main():
     config = Config()
     config.load()
@@ -74,10 +83,4 @@ def main():
     )
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt as e:
-        print()
-    except DrifterException as e:
-        message = getattr(e, 'msg', e.message)
-        click.secho('ERROR: %s' % (message), bold=True, fg='red')
+    run()

@@ -5,6 +5,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='drifter',
+    version='0.0.1',
     description='Easy and dynamic machine creation.',
     url='https://github.com/bizurkur/drifter',
     license='MIT',
@@ -16,11 +17,10 @@ setup(
 
     install_requires=[
         'click',
-        'vboxapi',
     ],
 
     entry_points='''
         [console_scripts]
-        drifter=drifter.drifter:cli
+        drifter=drifter.cli:run
     '''
 )
