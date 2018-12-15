@@ -17,7 +17,7 @@ def destroy(ctx, config, name, force):
     provider = config.get_provider(name)
 
     if not force:
-        commands.confirm_destroy(name)
+        force = commands.confirm_destroy(name)
 
     providers.invoke_provider_context(ctx, provider,
         [name] + (['--force'] if force else []) + ctx.args)
