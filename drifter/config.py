@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import click
+from util.exceptions import GenericException
 
 class Config(object):
     def __init__(self, folder=None):
@@ -110,12 +111,14 @@ class Config(object):
         if name in self.data['machines']:
             return self.data['machines'][name]
 
-        raise Exception('Machine "%s" does not exist.' % (name))
+        raise GenericException('Machine "%s" does not exist.' % (name))
 
     def get_provider(self, name):
         settings = self.get_machine(name)
         provider = settings.get('provider', None)
         if not provider:
-            raise Exception('No provider set for "%s" machine.' % (name))
+            raise GenericException(
+                'No provider set for "%s" machine.' % (name)
+            )
 
         return provider

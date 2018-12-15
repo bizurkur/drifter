@@ -2,6 +2,7 @@ from __future__ import print_function, absolute_import, division
 import os
 from functools import update_wrapper
 import click
+from util.exceptions import ProviderException
 
 def pass_provider(f):
     @click.pass_context
@@ -27,14 +28,20 @@ def get_provider(provider):
     try:
         module = __import__('providers.%s' % (provider), fromlist=['providers'])
     except ImportError as e:
-        raise Exception('Provider "%s" is invalid: %s' % (provider, e.message))
+        raise ProviderException(
+            'Provider "%s" is invalid: %s' % (provider, e.message)
+        )
 
     cmd = getattr(module, provider, None)
     if not cmd:
-        raise Exception('Provider "%s" does not define a subcommand.' % (provider))
+        raise ProviderException(
+            'Provider "%s" does not define a subcommand.' % (provider)
+        )
 
     if not isinstance(cmd, click.core.Group):
-        raise Exception('Provider "%s" is not set up as a command group.' % (provider))
+        raise ProviderException(
+            'Provider "%s" is not set up as a command group.' % (provider)
+        )
 
     return cmd
 
@@ -43,7 +50,9 @@ def get_provider_cmd(ctx, provider, name):
 
     cmd = provider_cmd.get_command(ctx, name)
     if not cmd:
-        raise Exception('Provider "%s" is missing a "%s" command.' % (provider, name))
+        raise ProviderException(
+            'Provider "%s" does not have a "%s" command.' % (provider, name)
+        )
 
     return cmd
 

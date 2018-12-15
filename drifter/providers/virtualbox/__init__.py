@@ -8,7 +8,7 @@ import click
 import vboxapi
 import commands
 import providers
-from providers.virtualbox.provider import Provider
+from providers.virtualbox.provider import Provider, VirtualBoxException
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -54,7 +54,7 @@ def up(provider, config, name, base, memory, head, mac, ports):
         settings = config.get_machine(name)
     except Exception as e:
         # If the settings aren't found, it's because the machine already existed.
-        raise Exception('A machine named "%s" already exists.' % (name))
+        raise VirtualBoxException('A machine named "%s" already exists.' % (name))
 
     if head is None:
         head = not settings.get('headless', True)

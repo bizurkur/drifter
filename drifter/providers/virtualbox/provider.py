@@ -3,6 +3,10 @@ import os
 import sys
 from time import sleep
 import vboxapi
+from util.exceptions import ProviderException, InvalidArgumentException
+
+class VirtualBoxException(ProviderException):
+    pass
 
 class Provider(object):
     def __init__(self):
@@ -21,11 +25,11 @@ class Provider(object):
                 return False
 
             message = getattr(e, 'msg', e.message)
-            raise Exception(message)
+            raise VirtualBoxException(message)
 
         logging.debug('Checking machine accessibility...')
         if not self.machine.accessible:
-            raise Exception(
+            raise VirtualBoxException(
                 'Machine is not accessible: %s' % (self.machine.accessError)
             )
 
@@ -88,7 +92,10 @@ class Provider(object):
             except Exception as e_:
                 pass
 
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Failed to register machine: %s' % (message)
+            )
 
     def clone_from(self, base):
         logging.debug('Creating disk clones...')
@@ -122,7 +129,9 @@ class Provider(object):
             )
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise Exception('Failed to unregister machine: %s' % (message))
+            raise VirtualBoxException(
+                'Failed to unregister machine: %s' % (message)
+            )
         logging.debug('Machine unregistered.')
 
         logging.debug('Deleting files...')
@@ -131,7 +140,7 @@ class Provider(object):
             progress.waitForCompletion(-1)
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise Exception(
+            raise VirtualBoxException(
                 'Failed to delete files for machine: %s' % (message)
             )
         logging.debug('Files deleted.')
@@ -155,11 +164,8 @@ class Provider(object):
             )
             progress.waitForCompletion(-1)
         except Exception as e:
-            # message = getattr(e, 'msg', e.message)
-            # raise GenericException(
-            #     'Failed to start machine: %s' % (message)
-            # )
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException('Failed to start machine: %s' % (message))
         finally:
             self.release_lock()
 
@@ -177,7 +183,9 @@ class Provider(object):
             logging.debug('Shutdown complete.')
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise Exception('Failed to shutdown machine: %s' % (message))
+            raise VirtualBoxException(
+                'Failed to shutdown machine: %s' % (message)
+            )
         finally:
             self.release_lock()
 
@@ -199,13 +207,10 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            # message = getattr(e, 'msg', e.message)
-            # # raise Exception(
-            # #     'Unable to create machine storage: %s' % (message)
-            # # )
-            # click.secho('Error: Unable to create machine storage: %s' % (message), bold=True, fg='red')
-            # sys.exit(1)
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Unable to create machine storage: %s' % (message)
+            )
         finally:
             self.release_lock()
 
@@ -254,13 +259,10 @@ class Provider(object):
                 logging.debug('Removing medium "%s"...' % (medium_path))
                 os.remove(medium_path)
 
-            # message = getattr(e, 'msg', e.message)
-            # # raise GenericException(
-            # #     'Unable to create machine media: %s' % (message)
-            # # )
-            # click.secho('Error: Unable to create machine media: %s' % (message), bold=True, fg='red')
-            # sys.exit(1)
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Unable to create machine media: %s' % (message)
+            )
         finally:
             self.release_lock()
 
@@ -280,13 +282,10 @@ class Provider(object):
             self.session.machine.setBootOrder(4, self.manager.constants.DeviceType_Null)
             self.session.machine.saveSettings()
         except Exception as e:
-            # message = getattr(e, 'msg', e.message)
-            # # raise GenericException(
-            # #     'Unable to set machine settings: %s' % (message)
-            # # )
-            # click.secho('Error: Unable to set machine settings: %s' % (message), bold=True, fg='red')
-            # sys.exit(1)
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Unable to set machine settings: %s' % (message)
+            )
         finally:
             self.release_lock()
 
@@ -312,11 +311,10 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            # message = getattr(e, 'msg', e.message)
-            # raise GenericException(
-            #     'Failed to configure network: %s' % (message)
-            # )
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Failed to configure network: %s' % (message)
+            )
         finally:
             self.release_lock()
 
@@ -340,7 +338,11 @@ class Provider(object):
 
             for ports in port_list:
                 network.NATEngine.addRedirect(
-                    '%d:%d:%s' % (ports['host'], ports['guest'], ports['protocol']),
+                    '%d:%d:%s' % (
+                        ports['host'],
+                        ports['guest'],
+                        ports['protocol']
+                    ),
                     ports['protocol_id'],
                     '127.0.0.1',
                     ports['host'],
@@ -350,17 +352,18 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            # message = getattr(e, 'msg', e.message)
-            # raise GenericException(
-            #     'Failed to forward ports: %s' % (message)
-            # )
-            raise e
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException('Failed to forward ports: %s' % (message))
         finally:
             self.release_lock()
 
     def _merge_ports(self, ports):
         return ','.join(
-            ['%s:%s:%s' % (port['host'], port['guest'], port.get('protocol', 'tcp')) for port in ports]
+            ['%s:%s:%s' % (
+                port['host'],
+                port['guest'],
+                port.get('protocol', 'tcp')
+            ) for port in ports]
         )
 
     def _parse_ports(self, ports):
@@ -380,9 +383,10 @@ class Provider(object):
             guest_port = None
             protocol = 'tcp'
             count = len(pieces)
-            if 2 > count:
-                raise Exception(
-                    'Value "%s" is invalid. Expected <host-port>:<guest-port>[:<protocol>]' % (part)
+            if count > 3 or count < 2:
+                raise InvalidArgumentException(
+                    'Value "%s" is invalid. ' % (part)
+                        +'Expected <host-port>:<guest-port>[:<protocol>]'
                 )
 
             error = 'Host port "%s" is invalid; must be a number 1-65535.' % (pieces[0])
@@ -390,27 +394,27 @@ class Provider(object):
             try:
                 host_port = int(pieces[0])
             except Exception as e:
-                raise Exception(error)
+                raise InvalidArgumentException(error)
 
             if 0 >= host_port or host_port > 65535:
-                raise Exception(error)
+                raise InvalidArgumentException(error)
 
             error = 'Guest port "%s" is invalid; must be a number 1-65535.' % (pieces[1])
             try:
                 guest_port = int(pieces[1])
             except Exception as e:
-                raise Exception(error)
+                raise InvalidArgumentException(error)
 
             if 0 >= guest_port or guest_port > 65535:
-                raise Exception(error)
+                raise InvalidArgumentException(error)
 
             if count >= 3:
                 protocol = pieces[2].lower()
                 if protocol not in allowed_protocols:
-                    raise Exception(
+                    raise InvalidArgumentException(
                         'Protocol "%s" is invalid; must be one of ["%s"]' % (
                             protocol,
-                            '", "'.join(keys(allowed_protocols))
+                            '", "'.join(allowed_protocols.keys())
                         )
                     )
 

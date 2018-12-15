@@ -5,6 +5,7 @@ import click
 import commands
 from config import Config
 import providers
+from util.exceptions import DrifterException
 
 __version__ = '0.0.1'
 __author__ = 'Luke Kingsley'
@@ -77,6 +78,6 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt as e:
         print()
-    except Exception as e:
+    except DrifterException as e:
         message = getattr(e, 'msg', e.message)
         click.secho('ERROR: %s' % (message), bold=True, fg='red')
