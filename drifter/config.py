@@ -4,8 +4,10 @@ import io
 import json
 import os
 import sys
+
 import click
-from util.exceptions import GenericException
+
+from drifter.exceptions import GenericException
 
 class Config(object):
     def __init__(self, folder=None):

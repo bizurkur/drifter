@@ -1,8 +1,10 @@
 from __future__ import print_function, absolute_import, division
-import os
 from functools import update_wrapper
+import os
+
 import click
-from util.exceptions import ProviderException
+
+from drifter.exceptions import ProviderException
 
 def pass_provider(f):
     @click.pass_context
@@ -26,7 +28,7 @@ def get_providers():
 
 def get_provider(provider):
     try:
-        module = __import__('providers.%s' % (provider), fromlist=['providers'])
+        module = __import__('drifter.providers.%s' % (provider), fromlist=['drifter.providers'])
     except ImportError as e:
         raise ProviderException(
             'Provider "%s" is invalid: %s' % (provider, e.message)

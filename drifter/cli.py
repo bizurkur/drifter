@@ -1,11 +1,12 @@
 from __future__ import print_function, absolute_import, division
 import logging
 import os
+
 import click
-import commands
-from config import Config
-import providers
-from util.exceptions import DrifterException
+
+from drifter.commands import CommandLoader
+from drifter.config import Config
+from drifter.exceptions import DrifterException
 
 __version__ = '0.0.1'
 __author__ = 'Luke Kingsley'
@@ -23,7 +24,7 @@ def main():
     config = Config()
     config.load()
 
-    @click.group(invoke_without_command=True, cls=commands.CommandLoader)
+    @click.group(invoke_without_command=True, cls=CommandLoader)
     @click.option('--debug', help='Enable debug mode.', is_flag=True)
     @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')
     @click.pass_context

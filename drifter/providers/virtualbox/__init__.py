@@ -4,11 +4,13 @@ from __future__ import print_function, absolute_import, division
 import logging
 import os
 import sys
+
 import click
 import vboxapi
-import commands
-import providers
-from providers.virtualbox.provider import Provider, VirtualBoxException
+
+import drifter.commands
+import drifter.providers
+from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -18,14 +20,14 @@ def virtualbox(ctx):
     ctx.obj['provider'] = Provider()
 
 @virtualbox.command()
-@commands.name_argument
+@drifter.commands.name_argument
 @click.option('--base', help='Machine to use as the base.')
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
 @click.option('--ports', help='Ports to forward.')
 @click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
-@commands.pass_config
-@providers.pass_provider
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
 def up(provider, config, name, base, memory, head, mac, ports):
     """Brings up a VirtualBox machine."""
 
@@ -68,10 +70,10 @@ def up(provider, config, name, base, memory, head, mac, ports):
     provider.start(head, memory, mac, ports)
 
 @virtualbox.command()
-@commands.name_argument
-@commands.force_option
-@commands.pass_config
-@providers.pass_provider
+@drifter.commands.name_argument
+@drifter.commands.force_option
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
 def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
 
@@ -89,9 +91,9 @@ def destroy(provider, config, name, force):
     config.save()
 
 @virtualbox.command()
-@commands.name_argument
-@commands.pass_config
-@providers.pass_provider
+@drifter.commands.name_argument
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
 def halt(provider, config, name):
     """Halts a VirtualBox machine."""
 

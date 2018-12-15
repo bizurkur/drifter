@@ -2,8 +2,10 @@ from __future__ import print_function, absolute_import, division
 import difflib
 from functools import update_wrapper
 import os
+
 import click
-import providers
+
+from drifter.providers import get_providers
 
 # TODO: get default value
 # TODO: Blow up when no machines
@@ -22,7 +24,7 @@ force_option = click.option(
 provider_option = click.option(
     '--provider',
     metavar='PROVIDER',
-    type=click.Choice(providers.get_providers()),
+    type=click.Choice(get_providers()),
     default='virtualbox',
     show_default=True,
     help='Which provider to use.'
@@ -50,7 +52,7 @@ def get_commands():
 
 class CommandLoader(click.MultiCommand):
     def list_commands(self, ctx):
-        return get_commands() + providers.get_providers()
+        return get_commands() + get_providers()
 
     def get_command(self, ctx, name):
         ns = {}
