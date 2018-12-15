@@ -34,8 +34,20 @@ class Config(object):
             try:
                 with io.open(path, 'r') as handle:
                     self.data = json.load(handle)
-            except Exception as e:
-                click.secho('Configuration file "%s" could not be loaded.' % (path), fg='red', bold=True)
+            except IOError as e:
+                click.secho(
+                    'Configuration file "%s" is not readable.' % (path)
+                        +' Check your file permissions.',
+                    fg='red',
+                    bold=True
+                )
+                sys.exit(1)
+            except ValueError as e:
+                click.secho(
+                    'Configuration file "%s" seems to have invalid data.' % (path),
+                    fg='red',
+                    bold=True
+                )
                 if click.confirm('Would you like to reset it?'):
                     self.create()
                 else:
