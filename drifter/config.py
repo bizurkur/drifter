@@ -1,15 +1,17 @@
 
 from __future__ import print_function, absolute_import, division
 import io
+import json
 import os
-import yaml
+import sys
+import click
 
 class Config(object):
     def __init__(self, folder=None):
         self.data = {}
         self.base_dir = folder or os.getcwd()
         self.config_dir = '.drifter'
-        self.config_file = 'config.yaml'
+        self.config_file = 'config.json'
 
     def get_path(self, path=None):
         """Gets the path to the configuration file."""
@@ -29,8 +31,16 @@ class Config(object):
             path = self.get_path()
 
         if os.path.isfile(path):
-            with io.open(path, 'r') as handle:
-                self.data = yaml.load(handle)
+            try:
+                with io.open(path, 'r') as handle:
+                    self.data = json.load(handle)
+            except Exception as e:
+                click.secho('Configuration file "%s" could not be loaded.' % (path), fg='red', bold=True)
+                if click.confirm('Would you like to reset it?'):
+                    self.create()
+                else:
+                    click.echo('Aborted!')
+                    sys.exit(1)
 
     def find(self, path=None):
         """Finds the configuration file.
@@ -74,7 +84,8 @@ class Config(object):
         """Saves the configuration file."""
         filename = self.get_path()
         with io.open(filename, 'w', encoding='utf-8') as handle:
-            yaml.dump(self.data, handle, default_flow_style=False)
+            data = json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
+            handle.write(unicode(data))
 
     def add_machine(self, name, settings):
         self.data['machines'][name] = settings
