@@ -50,7 +50,12 @@ def up(provider, config, name, base, memory, head, mac, ports):
 
         provider.clone_from(base)
 
-    settings = config.get_machine(name)
+    try:
+        settings = config.get_machine(name)
+    except Exception as e:
+        # If the settings aren't found, it's because the machine already existed.
+        raise Exception('A machine named "%s" already exists.' % (name))
+
     if head is None:
         head = not settings.get('headless', True)
     if not memory:
