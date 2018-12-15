@@ -33,6 +33,17 @@ To use it:
 
 More docs will be added as commands get completed.
 
+
+# Autocompletion
+
+To enable Bash autocompletion:
+
+    _DRIFTER_COMPLETE=source drifter > drifter-complete.sh
+
+Then add this line to your .bashrc file:
+
+    . /path/to/drifter-complete.sh
+
 ----
 
 # Commands
