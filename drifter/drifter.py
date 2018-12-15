@@ -28,15 +28,17 @@ def main():
         level = logging.DEBUG if debug else logging.INFO
         logging.basicConfig(format='%(levelname)s: %(message)s', level=level)
 
-        if not ctx.invoked_subcommand:
-            with ctx:
-                help_ctx = ctx.command.make_context(
-                    ctx.info_name,
-                    ['help'],
-                    help_option_names=ctx.help_option_names
-                )
-                with help_ctx:
-                    help_ctx.command.invoke(help_ctx)
+        if ctx.invoked_subcommand:
+            return
+
+        with ctx:
+            help_ctx = ctx.command.make_context(
+                ctx.info_name,
+                ['help'],
+                help_option_names=ctx.help_option_names
+            )
+            with help_ctx:
+                help_ctx.command.invoke(help_ctx)
 
     cli(
         obj={},
