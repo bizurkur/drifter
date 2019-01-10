@@ -9,6 +9,7 @@ import click
 import vboxapi
 
 import drifter.commands
+import drifter.commands.ssh as ssh_base
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
@@ -30,6 +31,13 @@ def virtualbox(ctx):
 @drifter.providers.pass_provider
 def up(provider, config, name, base, memory, head, mac, ports):
     """Brings up a VirtualBox machine."""
+
+    if config.has_machine(name):
+        settings = config.get_machine(name)
+        if 'virtualbox' != settings.get('provider', None):
+            raise VirtualBoxException(
+                'The machine "%s" already exists for a different provider.' % (name)
+            )
 
     click.secho('Bringing up machine "%s"...' % (name), bold=True)
 
@@ -103,3 +111,22 @@ def halt(provider, config, name):
 
     provider.load_machine(name)
     provider.stop()
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+def ssh(provider, config, name):
+    """Opens an SSH connection to a VirtualBox machine."""
+
+    config.get_machine(name)
+
+    provider.load_machine(name)
+    if not provider.is_running():
+        raise VirtualBoxException('Machine is not in a started state.')
+
+    server = provider.get_server_data()
+    # TODO: Get this from config
+    server['username'] = 'drifter'
+
+    ssh_base.open_ssh(server)

@@ -196,6 +196,39 @@ class Provider(object):
         logging.debug('Machine stopped.')
         return True
 
+    def get_server_data(self):
+        server = {
+            'redirects': [],
+        }
+
+        try:
+            self.acquire_lock()
+
+            network = self.session.machine.getNetworkAdapter(0)
+
+            redirects = network.NATEngine.getRedirects()
+            for redirect in redirects:
+                parts = redirect.split(',')
+                server['redirects'].append({
+                    'name': parts[0],
+                    'protocol_id': parts[1],
+                    'host_name': parts[2],
+                    'host_port': parts[3],
+                    'guest_name': parts[4],
+                    'guest_port': parts[5],
+                })
+                if '22' == parts[5]:
+                    server['ssh_host'] = parts[2]
+                    server['ssh_port'] = parts[3]
+
+        except Exception as e:
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException('Failed to get server data: %s' % (message))
+        finally:
+            self.release_lock()
+
+        return server
+
     def _create_storage(self, portCount):
         logging.debug('Creating storage...')
 
@@ -323,9 +356,6 @@ class Provider(object):
             self.release_lock()
 
     def _forward_ports(self, ports):
-        if ports is None:
-            return
-
         orig_list = self._parse_ports(ports)
         port_list = self._get_collision_free_ports(orig_list)
 
@@ -372,16 +402,19 @@ class Provider(object):
 
     def _parse_ports(self, ports):
         port_list = []
-        if ports == '':
-            return []
+        if not ports:
+            ports = ''
 
         allowed_protocols = {
             'tcp': self.manager.constants.NATProtocol_TCP,
             'udp': self.manager.constants.NATProtocol_UDP
         }
 
+        has_ssh = False
         parts = ports.split(',')
         for part in parts:
+            if part == '':
+                continue
             pieces = part.split(':')
             host_port = None
             guest_port = None
@@ -422,11 +455,22 @@ class Provider(object):
                         )
                     )
 
+            if guest_port == 22:
+                has_ssh = True
+
             port_list.append({
                 'host': host_port,
                 'guest': guest_port,
                 'protocol': protocol,
                 'protocol_id': allowed_protocols[protocol],
+            })
+
+        if not has_ssh:
+            port_list.append({
+                'host': 2222,
+                'guest': 22,
+                'protocol': 'tcp',
+                'protocol_id': allowed_protocols['tcp'],
             })
 
         return port_list

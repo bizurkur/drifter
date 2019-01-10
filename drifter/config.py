@@ -109,6 +109,12 @@ class Config(object):
         if name in self.data['machines']:
             del self.data['machines'][name]
 
+    def has_machine(self, name):
+        if name in self.data['machines']:
+            return True
+
+        return False
+
     def get_machine(self, name):
         if name in self.data['machines']:
             return self.data['machines'][name]
