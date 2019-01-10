@@ -20,6 +20,9 @@ def virtualbox(ctx):
 
     ctx.obj['provider'] = Provider()
 
+    if not ctx.invoked_subcommand:
+        click.echo(ctx.get_help())
+
 @virtualbox.command()
 @drifter.commands.name_argument
 @click.option('--base', help='Machine to use as the base.')
