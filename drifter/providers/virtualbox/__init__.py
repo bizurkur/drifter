@@ -129,7 +129,5 @@ def ssh(provider, config, name):
         raise VirtualBoxException('Machine is not in a started state.')
 
     server = provider.get_server_data()
-    # TODO: Get this from config
-    server['username'] = 'drifter'
 
-    ssh_base.open_ssh(server)
+    ssh_base.ssh_connect(server)
