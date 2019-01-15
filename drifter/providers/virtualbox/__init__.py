@@ -9,6 +9,7 @@ import click
 import vboxapi
 
 import drifter.commands
+import drifter.commands.rsync as rsync_base
 import drifter.commands.ssh as ssh_base
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
@@ -120,6 +121,19 @@ def ssh(provider, config, name):
     server = provider.get_server_data()
 
     ssh_base.ssh_connect(config, [server])
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+def rsync(provider, config, name):
+    """Opens an rsync connection to a VirtualBox machine."""
+
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    rsync_base.rsync_connect(config, [server])
 
 def require_machine(config, name):
     config.get_machine(name)

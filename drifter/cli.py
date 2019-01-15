@@ -70,6 +70,9 @@ def main():
             'ssh': {
                 'name': 'default',
             },
+            'rsync': {
+                'name': 'default',
+            },
             'virtualbox': {
                 'up': {
                     'name': 'default',
@@ -83,6 +86,9 @@ def main():
                     'name': 'default',
                 },
                 'ssh': {
+                    'name': 'default',
+                },
+                'rsync': {
                     'name': 'default',
                 },
             }
