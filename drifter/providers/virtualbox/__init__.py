@@ -81,7 +81,7 @@ def up(provider, config, name, base, memory, head, mac, ports):
 def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
 
-    config.get_machine(name)
+    require_machine(config, name)
 
     if not force:
         commands.confirm_destroy(name)
@@ -101,7 +101,7 @@ def destroy(provider, config, name, force):
 def halt(provider, config, name):
     """Halts a VirtualBox machine."""
 
-    config.get_machine(name)
+    require_machine(config, name)
 
     click.secho('Halting machine "%s"...' % (name), bold=True)
 
@@ -115,12 +115,18 @@ def halt(provider, config, name):
 def ssh(provider, config, name):
     """Opens an SSH connection to a VirtualBox machine."""
 
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    ssh_base.ssh_connect(config, [server])
+
+def require_machine(config, name):
     config.get_machine(name)
+
+def require_running_machine(config, name, provider):
+    require_machine(config, name)
 
     provider.load_machine(name)
     if not provider.is_running():
         raise VirtualBoxException('Machine is not in a started state.')
-
-    server = provider.get_server_data()
-
-    ssh_base.ssh_connect(server)

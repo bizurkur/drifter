@@ -5,6 +5,7 @@ import click
 
 import drifter.commands
 from drifter.providers import invoke_provider_context
+from drifter.util import get_cli
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
@@ -19,7 +20,7 @@ def ssh(ctx, config, name):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name] + ctx.args)
 
-def ssh_connect(server, additional_args=[], command=None, filelist=None, verbose=True):
+def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
     """Opens an SSH connection to the given server."""
 
     base_command = ['ssh']
@@ -41,18 +42,33 @@ def ssh_connect(server, additional_args=[], command=None, filelist=None, verbose
     # if private_key:
     #     base_command += ['-i', private_key]
 
-    base_command += [
-        # TODO: Get username from config
-        '%s@%s' % (server.get('username', 'drifter'), server['ssh_host']),
-        '-p',
-        server['ssh_port'],
-    ]
     base_command += additional_args
 
-    # if command:
-    #     if filelist:
-    #         command = command.replace('{}', '"%s"' % ('" "'.join(filelist)))
-    #
-    #     return self.get_command_line_response(base_command + [command], verbose)
+    if command:
+        responses = []
+
+        if filelist:
+            command = command.replace('{}', '"%s"' % ('" "'.join(filelist)))
+
+        # run the command on each server
+        for server in servers:
+            this_command = base_command[:] + [
+                # TODO: Get username from config
+                '%s@%s' % (server.get('username', 'drifter'), server['ssh_host']),
+                '-p',
+                server['ssh_port'],
+            ]
+
+            responses.append(get_cli(this_command + [command], verbose))
+
+        return responses
+
+    # connect to the first server only
+    base_command += [
+        # TODO: Get username from config
+        '%s@%s' % (servers[0].get('username', 'drifter'), servers[0]['ssh_host']),
+        '-p',
+        servers[0]['ssh_port'],
+    ]
 
     return os.execvp('ssh', map(str, base_command))
