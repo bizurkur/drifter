@@ -35,13 +35,6 @@ def virtualbox(ctx):
 def up(provider, config, name, base, memory, head, mac, ports):
     """Brings up a VirtualBox machine."""
 
-    if config.has_machine(name):
-        settings = config.get_machine(name)
-        if 'virtualbox' != settings.get('provider', None):
-            raise VirtualBoxException(
-                'The machine "%s" already exists for a different provider.' % (name)
-            )
-
     click.secho('Bringing up machine "%s"...' % (name), bold=True)
 
     # create it if it doesn't exist
