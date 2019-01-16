@@ -5,6 +5,7 @@ import click
 
 import drifter.commands
 import drifter.commands.ssh as base_ssh
+from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 from drifter.util import get_cli
 
@@ -21,24 +22,28 @@ def rsync(ctx, config, name):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name] + ctx.args)
 
-def rsync_connect(config, servers, additional_args=[], command=None, run_auto_command=True, filelist=None, verbose=True):
-    # TODO: Get paths from config
-    local_path = '/'
-    remote_path = '/var/www'
+def rsync_connect(config, servers, additional_args=[],
+        command=None, run_auto_command=True, filelist=None, verbose=True):
+    """Rsyncs files to the given servers via SSH."""
+
+    local_path = config.get_default('rsync.local', '/')
+    remote_path = config.get_default('rsync.remote', None)
+    if not remote_path:
+        raise GenericException('No remote rsync path specified.')
 
     local_path = os.path.join(config.base_dir, local_path.strip(os.sep), '')
     remote_path = os.path.join(remote_path, '')
 
-    base_command = get_base_command()
+    base_command = _get_base_command(config)
+    default_username = config.get_default('ssh.username', 'drifter')
 
     ssh_params = ''
-    # if not ssh.get('verify_host_key', False):
-    if True:
+    if not config.get_default('ssh.verify_host_key', False):
         ssh_params += ' -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null'
 
-    # private_key = ssh.get('private_key_path', None)
-    # if private_key:
-    #     ssh_params += ' -i "%s"' % (private_key)
+    private_key = config.get_default('ssh.private_key_path', None)
+    if private_key:
+        ssh_params += ' -i "%s"' % (private_key)
 
     for server in servers:
         this_command = base_command[:] + additional_args + [
@@ -46,8 +51,7 @@ def rsync_connect(config, servers, additional_args=[], command=None, run_auto_co
             'ssh -p %s%s' % (server['ssh_port'], ssh_params),
             local_path,
             '%s@%s:%s' % (
-                # TODO: Get username from config
-                server.get('username', 'drifter'),
+                server.get('username', default_username),
                 server['ssh_host'],
                 remote_path,
             ),
@@ -65,44 +69,25 @@ def rsync_connect(config, servers, additional_args=[], command=None, run_auto_co
             verbose=verbose
         )
 
-def get_base_command():
+def _get_base_command(config):
     """Gets the base rsync command."""
 
-    default_args = [
+    command = ['rsync', '--rsync-path', 'sudo rsync']
+    command += config.get_default('rsync.args', [
         '--archive',
         '--compress',
         '--delete',
         '--verbose',
         '--no-owner',
         '--no-group',
-    ]
+    ])
 
-    command = ['rsync', '--rsync-path', 'sudo rsync']
-    # command += settings.get('rsync', {}).get('args', default_args)
-    command += default_args
+    include_list = config.get_default('rsync.include', [])
+    for include in include_list:
+        command += ['--include', include]
 
-    # include_list = get_include_list(self, settings)
-    # for include in include_list:
-    #     command += ['--include', include]
-    #
-    # exclude_list = get_exclude_list(self, settings)
-    # for exclude in exclude_list:
-    #     command += ['--exclude', exclude]
-
-    # TODO: Remove this.
-    command += ['--exclude', '.git/']
-    command += ['--exclude', '.tox/']
-    command += ['--exclude', '.pytest_cache/']
-    command += ['--exclude', 'vendor/']
-    command += ['--exclude', 'dist/']
-    command += ['--exclude', 'build/']
+    exclude_list = config.get_default('rsync.exclude', [])
+    for exclude in exclude_list:
+        command += ['--exclude', exclude]
 
     return command
-
-# def get_include_list(self, settings):
-#     """Gets rsync patterns to include."""
-#     return settings.get('rsync', {}).get('include', [])
-#
-# def get_exclude_list(self, settings):
-#     """Gets rsync patterns to exclude."""
-#     return settings.get('rsync', {}).get('exclude', [])
