@@ -23,11 +23,11 @@ def ssh(ctx, config, name):
 def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
     """Opens an SSH connection to the given server."""
 
-    base_command = ['ssh']
+    base_command = ['ssh'] + additional_args
 
-    # TODO: Get this from config
-    # if not ssh.get('verify_host_key', False):
-    if True:
+    default_username = config.get_default('ssh.username', 'drifter')
+
+    if not config.get_default('ssh.verify_host_key', False):
         base_command += [
             '-o',
             'StrictHostKeyChecking=no',
@@ -37,12 +37,9 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
             'UserKnownHostsFile=/dev/null'
         ]
 
-    # TODO: Get this from config
-    # private_key = ssh.get('private_key_path', None)
-    # if private_key:
-    #     base_command += ['-i', private_key]
-
-    base_command += additional_args
+    private_key = config.get_default('ssh.private_key_path', None)
+    if private_key:
+        base_command += ['-i', private_key]
 
     if command:
         responses = []
@@ -53,8 +50,10 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
         # run the command on each server
         for server in servers:
             this_command = base_command[:] + [
-                # TODO: Get username from config
-                '%s@%s' % (server.get('username', 'drifter'), server['ssh_host']),
+                '%s@%s' % (
+                    server.get('username', default_username),
+                    server['ssh_host'],
+                ),
                 '-p',
                 server['ssh_port'],
             ]
@@ -65,8 +64,10 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
 
     # connect to the first server only
     base_command += [
-        # TODO: Get username from config
-        '%s@%s' % (servers[0].get('username', 'drifter'), servers[0]['ssh_host']),
+        '%s@%s' % (
+            servers[0].get('username', default_username),
+            servers[0]['ssh_host'],
+        ),
         '-p',
         servers[0]['ssh_port'],
     ]
