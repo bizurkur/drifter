@@ -9,6 +9,9 @@ import click
 import vboxapi
 
 import drifter.commands
+import drifter.commands.rsync as rsync_base
+import drifter.commands.rsync_auto as rsync_auto_base
+import drifter.commands.ssh as ssh_base
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
@@ -18,6 +21,9 @@ def virtualbox(ctx):
     """Manages VirtualBox machines."""
 
     ctx.obj['provider'] = Provider()
+
+    if not ctx.invoked_subcommand:
+        click.echo(ctx.get_help())
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -77,7 +83,7 @@ def up(provider, config, name, base, memory, head, mac, ports):
 def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
 
-    config.get_machine(name)
+    require_machine(config, name)
 
     if not force:
         commands.confirm_destroy(name)
@@ -97,9 +103,68 @@ def destroy(provider, config, name, force):
 def halt(provider, config, name):
     """Halts a VirtualBox machine."""
 
-    config.get_machine(name)
+    require_machine(config, name)
 
     click.secho('Halting machine "%s"...' % (name), bold=True)
 
     provider.load_machine(name)
     provider.stop()
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+def ssh(provider, config, name):
+    """Opens a Secure Shell to a VirtualBox machine."""
+
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    ssh_base.ssh_connect(config, [server])
+
+@virtualbox.command(context_settings={
+    'ignore_unknown_options': True,
+    'allow_extra_args': True
+})
+@drifter.commands.name_argument
+@drifter.commands.command_option
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+@click.pass_context
+def rsync(ctx, provider, config, name, command):
+    """Rsyncs files to a VirtualBox machine."""
+
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    rsync_base.rsync_connect(config, [server], command=command,
+        additional_args=ctx.args)
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.command_option
+@click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+@click.pass_context
+def rsync_auto(ctx, provider, config, name, command, burst_limit):
+    """Automatically rsync files to a VirtualBox machine."""
+
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    rsync_auto_base.rsync_auto_connect(config, [server], command=command,
+        additional_args=ctx.args, burst_limit=burst_limit)
+
+def require_machine(config, name):
+    config.get_machine(name)
+
+def require_running_machine(config, name, provider):
+    require_machine(config, name)
+
+    provider.load_machine(name)
+    if not provider.is_running():
+        raise VirtualBoxException('Machine is not in a started state.')

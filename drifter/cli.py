@@ -67,6 +67,15 @@ def main():
             'halt': {
                 'name': 'default',
             },
+            'ssh': {
+                'name': 'default',
+            },
+            'rsync': {
+                'name': 'default',
+            },
+            'rsync-auto': {
+                'name': 'default',
+            },
             'virtualbox': {
                 'up': {
                     'name': 'default',
@@ -77,6 +86,15 @@ def main():
                     'name': 'default',
                 },
                 'halt': {
+                    'name': 'default',
+                },
+                'ssh': {
+                    'name': 'default',
+                },
+                'rsync': {
+                    'name': 'default',
+                },
+                'rsync-auto': {
                     'name': 'default',
                 },
             }

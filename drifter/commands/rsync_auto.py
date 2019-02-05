@@ -1,8 +1,16 @@
 from __future__ import print_function, absolute_import, division
+from fnmatch import fnmatch
+import os
+from threading import Thread, BoundedSemaphore
+from time import sleep
 
 import click
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 import drifter.commands
+import drifter.commands.rsync as base_rsync
+import drifter.commands.ssh as base_ssh
 from drifter.providers import invoke_provider_context
 
 @click.command(context_settings={
@@ -10,10 +18,154 @@ from drifter.providers import invoke_provider_context
     'allow_extra_args': True
 })
 @drifter.commands.name_argument
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
-def rsync_auto(ctx, config, name):
-    """Continously remote synchronizes files to a machine."""
+def rsync_auto(ctx, config, name, command):
+    """Automatically rsyncs files to a machine."""
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+
+class RsyncHandler(FileSystemEventHandler):
+    """Class to handle rsync events."""
+
+    def __init__(self, config, servers, **kwargs):
+        super(RsyncHandler, self).__init__()
+        self.config = config
+        self.servers = servers
+        self.kwargs = kwargs
+        self.files = {}
+        self.included = self._build_list('rsync.include')
+        self.excluded = self._build_list('rsync.exclude')
+        self.semaphore = BoundedSemaphore()
+
+    def process(self, event):
+        """Processes the event."""
+        Thread(target=self.delay_rsync, args=(event,)).start()
+
+    def on_any_event(self, event):
+        """Processes all events."""
+        self.process(event)
+
+    def delay_rsync(self, event):
+        """Delays the rsync to allow for multiple simultaneous saves."""
+
+        local_path = self.kwargs['local_path']
+        remote_path = self.kwargs['remote_path']
+
+        relative_path = event.src_path.strip()
+        if relative_path.startswith(local_path):
+            relative_path = relative_path[len(local_path):]
+        else:
+            return False
+
+        if self._is_excluded(relative_path):
+            return False
+
+        self.files[os.path.join(remote_path, relative_path)] = True
+
+        if not self.semaphore.acquire(blocking=False):
+            return False
+
+        sleep(.25)
+
+        burst_mode = False
+        if not self.kwargs['command']:
+            click.secho('Rsyncing folder: %s => %s' % (local_path, remote_path), bold=True)
+        elif self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
+            click.secho('Burst limit exceeded; ignoring rsync', bold=True)
+            self.files = {}
+            burst_mode = True
+
+        if not burst_mode:
+            verbose = True
+            if self.kwargs['command']:
+                verbose = False
+
+            filelist = list(self.files.keys())
+            self.files = {}
+            base_rsync.rsync_connect(self.config, self.servers, filelist=filelist,
+                verbose=verbose, **self.kwargs)
+
+            if not self.kwargs['command']:
+                _show_monitoring_message(self.config)
+
+        self.semaphore.release()
+
+        return True
+
+    def _build_list(self, source):
+        patterns = []
+        for pattern in self.config.get_default(source, []):
+            if pattern[-1] == os.sep:
+                pattern += '*'
+            patterns.append(pattern)
+
+        return patterns
+
+    def _is_excluded(self, relative_path):
+        for include in self.included:
+            if fnmatch(relative_path, include):
+                return False
+
+        for exclude in self.excluded:
+            if fnmatch(relative_path, exclude):
+                return True
+
+        return False
+
+def rsync_auto_connect(config, servers, additional_args=[], command=None,
+        run_once=False, burst_limit=0, verbose=True, local_path=None, remote_path=None):
+
+    local_path = base_rsync._get_local_path(config, local_path)
+    remote_path = base_rsync._get_remote_path(config, remote_path)
+
+    click.secho('Doing an initial rsync...', bold=True)
+    base_rsync.rsync_connect(config, servers, additional_args=additional_args,
+        verbose=verbose, local_path=local_path, remote_path=remote_path)
+
+    if command and run_once:
+        click.secho('Launching run-once command...', bold=True)
+
+        for server in servers:
+            Thread(
+                target=base_ssh.ssh_connect,
+                args=(config, [server],),
+                kwargs={
+                    'command': command
+                }
+            ).start()
+
+    _show_monitoring_message(config)
+
+    handler = RsyncHandler(config, servers, additional_args=additional_args, command=command,
+        burst_limit=burst_limit, local_path=local_path, remote_path=remote_path)
+    observer = Observer()
+    observer.schedule(handler, path=local_path, recursive=True)
+    observer.start()
+
+    try:
+        while observer.is_alive():
+            sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+
+    observer.join()
+
+def _show_monitoring_message(config):
+    message = 'Monitoring files for changes'
+
+    include_list = config.get_default('rsync.include', [])
+    if include_list:
+        message += '; including [ "%s" ]' % (
+            '", "'.join(include_list)
+        )
+
+    exclude_list = config.get_default('rsync.exclude', [])
+    if exclude_list:
+        message += '; excluding [ "%s" ]' % (
+            '", "'.join(exclude_list)
+        )
+
+    click.secho(message, bold=True)

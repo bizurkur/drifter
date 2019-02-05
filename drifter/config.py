@@ -4,10 +4,11 @@ import io
 import json
 import os
 import sys
+import yaml
 
 import click
 
-from drifter.exceptions import GenericException
+from drifter.exceptions import GenericException, InvalidArgumentException
 
 class Config(object):
     def __init__(self, folder=None):
@@ -15,6 +16,8 @@ class Config(object):
         self.base_dir = folder or os.getcwd()
         self.config_dir = '.drifter'
         self.config_file = 'config.json'
+        self.defaults_file = 'drifter.yaml'
+        self.defaults_loaded = False
 
     def get_path(self, path=None):
         """Gets the path to the configuration file."""
@@ -33,29 +36,31 @@ class Config(object):
             self.find()
             path = self.get_path()
 
-        if os.path.isfile(path):
-            try:
-                with io.open(path, 'r') as handle:
-                    self.data = json.load(handle)
-            except IOError as e:
-                click.secho(
-                    'Configuration file "%s" is not readable.' % (path)
-                        +' Check your file permissions.',
-                    fg='red',
-                    bold=True
-                )
+        if not os.path.isfile(path):
+            return
+
+        try:
+            with io.open(path, 'r') as handle:
+                self.data = json.load(handle)
+        except IOError as e:
+            click.secho(
+                'Configuration file "%s" is not readable.' % (path)
+                    +' Check your file permissions.',
+                fg='red',
+                bold=True
+            )
+            sys.exit(1)
+        except ValueError as e:
+            click.secho(
+                'Configuration file "%s" seems to have invalid data.' % (path),
+                fg='red',
+                bold=True
+            )
+            if click.confirm('Would you like to reset it?'):
+                self.create()
+            else:
+                click.echo('Aborted!')
                 sys.exit(1)
-            except ValueError as e:
-                click.secho(
-                    'Configuration file "%s" seems to have invalid data.' % (path),
-                    fg='red',
-                    bold=True
-                )
-                if click.confirm('Would you like to reset it?'):
-                    self.create()
-                else:
-                    click.echo('Aborted!')
-                    sys.exit(1)
 
     def find(self, path=None):
         """Finds the configuration file.
@@ -102,12 +107,54 @@ class Config(object):
             data = json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
             handle.write(unicode(data))
 
+    def load_defaults(self):
+        self.data['defaults'] = {}
+
+        path = os.path.join(self.base_dir, self.defaults_file)
+        if not os.path.isfile(path):
+            return
+
+        try:
+            with io.open(path, 'r') as handle:
+                self.data['defaults'] = yaml.load(handle)
+        except IOError as e:
+            raise GenericException(
+                'Configuration file "%s" is not readable.' % (path)
+                    +' Check your file permissions.'
+            )
+
+    def get_default(self, name, default=None):
+        if not self.defaults_loaded:
+            self.load_defaults()
+            self.defaults_loaded = True
+
+        if not isinstance(name, str):
+            raise InvalidArgumentException(
+                'Failed to load default value. Name must be a string.'
+            )
+
+        parts = name.split('.')
+        data = self.data['defaults']
+        for part in parts:
+            if not isinstance(data, dict) or part not in data:
+                return default
+
+            data = data[part]
+
+        return data
+
     def add_machine(self, name, settings):
         self.data['machines'][name] = settings
 
     def remove_machine(self, name):
         if name in self.data['machines']:
             del self.data['machines'][name]
+
+    def has_machine(self, name):
+        if name in self.data['machines']:
+            return True
+
+        return False
 
     def get_machine(self, name):
         if name in self.data['machines']:
