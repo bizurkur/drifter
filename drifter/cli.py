@@ -73,6 +73,9 @@ def main():
             'rsync': {
                 'name': 'default',
             },
+            'rsync-auto': {
+                'name': 'default',
+            },
             'virtualbox': {
                 'up': {
                     'name': 'default',
@@ -89,6 +92,9 @@ def main():
                     'name': 'default',
                 },
                 'rsync': {
+                    'name': 'default',
+                },
+                'rsync-auto': {
                     'name': 'default',
                 },
             }

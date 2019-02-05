@@ -10,6 +10,7 @@ import vboxapi
 
 import drifter.commands
 import drifter.commands.rsync as rsync_base
+import drifter.commands.rsync_auto as rsync_auto_base
 import drifter.commands.ssh as ssh_base
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
@@ -114,7 +115,7 @@ def halt(provider, config, name):
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def ssh(provider, config, name):
-    """Opens an SSH connection to a VirtualBox machine."""
+    """Opens a Secure Shell to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
 
@@ -122,18 +123,41 @@ def ssh(provider, config, name):
 
     ssh_base.ssh_connect(config, [server])
 
-@virtualbox.command()
+@virtualbox.command(context_settings={
+    'ignore_unknown_options': True,
+    'allow_extra_args': True
+})
 @drifter.commands.name_argument
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def rsync(provider, config, name):
-    """Opens an rsync connection to a VirtualBox machine."""
+@click.pass_context
+def rsync(ctx, provider, config, name, command):
+    """Rsyncs files to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    rsync_base.rsync_connect(config, [server])
+    rsync_base.rsync_connect(config, [server], command=command,
+        additional_args=ctx.args)
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.command_option
+@click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+@click.pass_context
+def rsync_auto(ctx, provider, config, name, command, burst_limit):
+    """Automatically rsync files to a VirtualBox machine."""
+
+    require_running_machine(config, name, provider)
+
+    server = provider.get_server_data()
+
+    rsync_auto_base.rsync_auto_connect(config, [server], command=command,
+        additional_args=ctx.args, burst_limit=burst_limit)
 
 def require_machine(config, name):
     config.get_machine(name)

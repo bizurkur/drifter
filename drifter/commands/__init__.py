@@ -30,6 +30,13 @@ provider_option = click.option(
     help='Which provider to use.'
 )
 
+command_option = click.option(
+    '--command',
+    '-c',
+    metavar='COMMAND',
+    help='Command to run after.'
+)
+
 def confirm_destroy(name):
     return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=True)
 
