@@ -124,12 +124,9 @@ def ssh(ctx, provider, config, name, command):
     server = provider.get_server_data()
 
     ssh_base.ssh_connect(config, [server], command=command,
-        additional_args=ctx.args)
+        additional_args=ctx.obj['extra'])
 
-@virtualbox.command(context_settings={
-    'ignore_unknown_options': True,
-    'allow_extra_args': True
-})
+@virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.command_option
 @drifter.commands.pass_config
@@ -143,7 +140,7 @@ def rsync(ctx, provider, config, name, command):
     server = provider.get_server_data()
 
     rsync_base.rsync_connect(config, [server], command=command,
-        additional_args=ctx.args)
+        additional_args=ctx.obj['extra'])
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -160,7 +157,7 @@ def rsync_auto(ctx, provider, config, name, command, burst_limit):
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
-        additional_args=ctx.args, burst_limit=burst_limit)
+        additional_args=ctx.obj['extra'], burst_limit=burst_limit)
 
 def require_machine(config, name):
     config.get_machine(name)

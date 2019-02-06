@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import, division
 import logging
 import os
+import sys
 
 import click
 
@@ -23,6 +24,15 @@ def run():
 def main():
     config = Config()
     config.load()
+
+    args = sys.argv[1:]
+    extra = []
+    try:
+        pos = args.index('--')
+        extra = args[pos + 1:]
+        args = args[0:pos]
+    except ValueError:
+        pass
 
     @click.group(invoke_without_command=True, cls=CommandLoader)
     @click.option('--debug', help='Enable debug mode.', is_flag=True)
@@ -52,7 +62,8 @@ def main():
                 help_ctx.command.invoke(help_ctx)
 
     cli(
-        obj={},
+        args=args,
+        obj={'extra': extra},
         auto_envvar_prefix='DRIFTER',
         help_option_names=['-h', '--help'],
         # TODO: This needs to move to a config
