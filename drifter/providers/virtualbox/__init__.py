@@ -112,16 +112,19 @@ def halt(provider, config, name):
 
 @virtualbox.command()
 @drifter.commands.name_argument
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def ssh(provider, config, name):
+@click.pass_context
+def ssh(ctx, provider, config, name, command):
     """Opens a Secure Shell to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    ssh_base.ssh_connect(config, [server])
+    ssh_base.ssh_connect(config, [server], command=command,
+        additional_args=ctx.args)
 
 @virtualbox.command(context_settings={
     'ignore_unknown_options': True,
