@@ -70,8 +70,12 @@ class RsyncHandler(FileSystemEventHandler):
 
         sleep(.25)
 
+        has_command = False
+        if self.kwargs['command'] or self.kwargs['run_once']:
+            has_command = True
+
         burst_mode = False
-        if not self.kwargs['command']:
+        if not has_command:
             click.secho('Rsyncing folder: %s => %s' % (local_path, remote_path), bold=True)
         elif self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
             click.secho('Burst limit exceeded; ignoring rsync', bold=True)
@@ -79,16 +83,12 @@ class RsyncHandler(FileSystemEventHandler):
             burst_mode = True
 
         if not burst_mode:
-            verbose = True
-            if self.kwargs['command']:
-                verbose = False
-
             filelist = list(self.files.keys())
             self.files = {}
             base_rsync.rsync_connect(self.config, self.servers, filelist=filelist,
-                verbose=verbose, **self.kwargs)
+                verbose=not has_command, **self.kwargs)
 
-            if not self.kwargs['command']:
+            if not has_command:
                 _show_monitoring_message(self.config)
 
         self.semaphore.release()
@@ -137,10 +137,12 @@ def rsync_auto_connect(config, servers, additional_args=[], command=None,
                 }
             ).start()
 
+        command = None
+
     _show_monitoring_message(config)
 
     handler = RsyncHandler(config, servers, additional_args=additional_args, command=command,
-        burst_limit=burst_limit, local_path=local_path, remote_path=remote_path)
+        burst_limit=burst_limit, run_once=run_once, local_path=local_path, remote_path=remote_path)
     observer = Observer()
     observer.schedule(handler, path=local_path, recursive=True)
     observer.start()

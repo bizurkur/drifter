@@ -145,11 +145,12 @@ def rsync(ctx, provider, config, name, command):
 @virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.command_option
+@click.option('--run-once', help='Run command only once.', is_flag=True)
 @click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
-def rsync_auto(ctx, provider, config, name, command, burst_limit):
+def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
@@ -157,7 +158,7 @@ def rsync_auto(ctx, provider, config, name, command, burst_limit):
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
-        additional_args=ctx.obj['extra'], burst_limit=burst_limit)
+        additional_args=ctx.obj['extra'], run_once=run_once, burst_limit=burst_limit)
 
 def require_machine(config, name):
     config.get_machine(name)
