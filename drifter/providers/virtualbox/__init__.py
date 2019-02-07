@@ -112,21 +112,21 @@ def halt(provider, config, name):
 
 @virtualbox.command()
 @drifter.commands.name_argument
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def ssh(provider, config, name):
+@click.pass_context
+def ssh(ctx, provider, config, name, command):
     """Opens a Secure Shell to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    ssh_base.ssh_connect(config, [server])
+    ssh_base.ssh_connect(config, [server], command=command,
+        additional_args=ctx.obj['extra'])
 
-@virtualbox.command(context_settings={
-    'ignore_unknown_options': True,
-    'allow_extra_args': True
-})
+@virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.command_option
 @drifter.commands.pass_config
@@ -140,16 +140,17 @@ def rsync(ctx, provider, config, name, command):
     server = provider.get_server_data()
 
     rsync_base.rsync_connect(config, [server], command=command,
-        additional_args=ctx.args)
+        additional_args=ctx.obj['extra'])
 
 @virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.command_option
+@click.option('--run-once', help='Run command only once.', is_flag=True)
 @click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
-def rsync_auto(ctx, provider, config, name, command, burst_limit):
+def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
 
     require_running_machine(config, name, provider)
@@ -157,7 +158,7 @@ def rsync_auto(ctx, provider, config, name, command, burst_limit):
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
-        additional_args=ctx.args, burst_limit=burst_limit)
+        additional_args=ctx.obj['extra'], run_once=run_once, burst_limit=burst_limit)
 
 def require_machine(config, name):
     config.get_machine(name)

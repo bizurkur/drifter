@@ -12,13 +12,14 @@ from drifter.util import get_cli
     'allow_extra_args': True
 })
 @drifter.commands.name_argument
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
-def ssh(ctx, config, name):
+def ssh(ctx, config, name, command):
     """Opens a Secure Shell to a machine."""
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
     """Opens an SSH connection to the given server."""
