@@ -4,9 +4,9 @@ import io
 import json
 import os
 import sys
-import yaml
 
 import click
+import yaml
 
 from drifter.exceptions import GenericException, InvalidArgumentException
 
