@@ -5,7 +5,7 @@ import click
 
 import drifter.commands
 from drifter.providers import invoke_provider_context
-from drifter.util import get_cli
+from drifter.utils import get_cli
 
 @click.command(context_settings={
     'ignore_unknown_options': True,

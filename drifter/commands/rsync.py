@@ -7,7 +7,7 @@ import drifter.commands
 import drifter.commands.ssh as base_ssh
 from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
-from drifter.util import get_cli
+from drifter.utils import get_cli
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
