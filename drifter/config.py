@@ -89,13 +89,18 @@ class Config(object):
 
         raise GenericException('Machine "%s" does not exist.' % (name))
 
+    def get_selected(self):
+        """Gets the selected machine.
+
+        Checks for environment variable DRIFTER_NAME, then the state file.
+        """
+        return os.environ.get('DRIFTER_NAME', self.state.get('selected', None))
+
     def get_provider(self, name):
         settings = self.get_machine(name)
         provider = settings.get('provider', None)
         if not provider:
-            raise GenericException(
-                'No provider set for "%s" machine.' % (name)
-            )
+            raise GenericException('No provider set for "%s" machine.' % (name))
 
         return provider
 

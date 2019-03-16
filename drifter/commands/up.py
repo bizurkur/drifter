@@ -17,25 +17,23 @@ from drifter.providers import invoke_provider_context
 def up(ctx, config, name, provider):
     """Brings up a machine or machines."""
 
-    # No name given; start all machines
-    if name == '':
-        # Check for multi-machine setup
-        machines = config.get_default('machines', [])
-        if not machines:
-            # Check for single machine setup
-            name = config.get_default('name')
-            if not name:
-                raise GenericException(
-                    'No machines to start up.'
-                )
-            machines = [name]
-
-        for machine in machines:
-            start_machine(ctx, config, machine, provider)
-
-    # Only start the named machine
-    else:
+    # Start the named machine only
+    if name:
         start_machine(ctx, config, name, provider)
+
+        return
+
+    # Check for multi-machine setup
+    machines = config.get_default('machines', [])
+    if not machines:
+        # Check for single machine setup
+        name = config.get_default('name')
+        if not name:
+            raise GenericException('No machines to start up.')
+        machines = [name]
+
+    for machine in machines:
+        start_machine(ctx, config, machine, provider)
 
 def start_machine(ctx, config, name, provider):
     # Precedence: machine-specific, CLI override, config default, 'virtualbox'

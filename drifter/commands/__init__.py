@@ -7,12 +7,17 @@ import click
 
 from ..providers import get_providers
 
-# TODO: get default value
-# TODO: Blow up when no machines
+def _get_name(ctx, param, value):
+    if not value:
+        return ctx.obj['config'].get_selected()
+
+    return value
+
 name_argument = click.argument(
     'name',
     metavar='NAME',
-    default=''
+    default='',
+    callback=_get_name
 )
 
 force_option = click.option(
