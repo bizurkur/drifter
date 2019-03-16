@@ -116,7 +116,7 @@ class Config(object):
 
         try:
             with io.open(path, 'r') as handle:
-                self.data['defaults'] = yaml.load(handle)
+                self.data['defaults'] = yaml.safe_load(handle)
         except IOError as e:
             raise GenericException(
                 'Configuration file "%s" is not readable.' % (path)
