@@ -17,6 +17,8 @@ setup(
 
     install_requires=[
         'click',
+        'PyYAML',
+        'watchdog',
     ],
 
     entry_points='''

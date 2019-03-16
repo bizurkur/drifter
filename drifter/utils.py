@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division, print_function
+from __future__ import print_function, absolute_import, division
 import subprocess
 
 def get_cli(cmd, output=False, shell=False):

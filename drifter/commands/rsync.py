@@ -7,7 +7,7 @@ import drifter.commands
 import drifter.commands.ssh as base_ssh
 from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
-from drifter.util import get_cli
+from drifter.utils import get_cli
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
@@ -20,6 +20,21 @@ from drifter.util import get_cli
 def rsync(ctx, config, name, command):
     """Rsyncs files to a machine."""
 
+    # Rsync to the named machine only
+    if name:
+        rsync_machine(ctx, config, name, command)
+
+        return
+
+    machines = config.list_machines()
+    if not machines:
+        raise GenericException('No machines available.')
+
+    # Rsync to all machines
+    for machine in machines:
+        rsync_machine(ctx, config, machine, command)
+
+def rsync_machine(ctx, config, name, command):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 

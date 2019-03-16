@@ -20,10 +20,11 @@ def run():
     except DrifterException as e:
         message = getattr(e, 'msg', e.message)
         click.secho('ERROR: %s' % (message), bold=True, fg='red')
+        sys.exit(1)
 
 def main():
     config = Config()
-    config.load()
+    config.load_state()
 
     args = sys.argv[1:]
     extra = []
@@ -68,47 +69,47 @@ def main():
         help_option_names=['-h', '--help'],
         # TODO: This needs to move to a config
         default_map={
-            'up': {
-                'name': 'default',
-                'provider': 'virtualbox',
-            },
-            'destroy': {
-                'name': 'default',
-            },
-            'halt': {
-                'name': 'default',
-            },
-            'ssh': {
-                'name': 'default',
-            },
-            'rsync': {
-                'name': 'default',
-            },
-            'rsync-auto': {
-                'name': 'default',
-            },
-            'virtualbox': {
-                'up': {
-                    'name': 'default',
-                    'base': '/Users/luke/VirtualBox VMs/ubuntu_bionic64/',
-                    'memory': 1024,
-                },
-                'destroy': {
-                    'name': 'default',
-                },
-                'halt': {
-                    'name': 'default',
-                },
-                'ssh': {
-                    'name': 'default',
-                },
-                'rsync': {
-                    'name': 'default',
-                },
-                'rsync-auto': {
-                    'name': 'default',
-                },
-            }
+            # 'up': {
+            #     'name': 'default',
+            #     'provider': 'virtualbox',
+            # },
+            # 'destroy': {
+            #     'name': 'default',
+            # },
+            # 'halt': {
+            #     'name': 'default',
+            # },
+            # 'ssh': {
+            #     'name': 'default',
+            # },
+            # 'rsync': {
+            #     'name': 'default',
+            # },
+            # 'rsync-auto': {
+            #     'name': 'default',
+            # },
+            # 'virtualbox': {
+            #     'up': {
+            #         'name': 'default',
+            #         'base': '/Users/luke/VirtualBox VMs/ubuntu_bionic64/',
+            #         'memory': 1024,
+            #     },
+            #     'destroy': {
+            #         'name': 'default',
+            #     },
+            #     'halt': {
+            #         'name': 'default',
+            #     },
+            #     'ssh': {
+            #         'name': 'default',
+            #     },
+            #     'rsync': {
+            #         'name': 'default',
+            #     },
+            #     'rsync-auto': {
+            #         'name': 'default',
+            #     },
+            # }
         }
     )
 

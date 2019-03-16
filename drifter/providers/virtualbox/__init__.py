@@ -12,6 +12,7 @@ import drifter.commands
 import drifter.commands.rsync as rsync_base
 import drifter.commands.rsync_auto as rsync_auto_base
 import drifter.commands.ssh as ssh_base
+from drifter.exceptions import GenericException
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
@@ -20,7 +21,8 @@ from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 def virtualbox(ctx):
     """Manages VirtualBox machines."""
 
-    ctx.obj['provider'] = Provider()
+    if 'provider' not in ctx.obj:
+        ctx.obj['provider'] = Provider()
 
     if not ctx.invoked_subcommand:
         click.echo(ctx.get_help())
@@ -37,42 +39,104 @@ def virtualbox(ctx):
 def up(provider, config, name, base, memory, head, mac, ports):
     """Brings up a VirtualBox machine."""
 
+    # Start the named machine only
+    if name:
+        _up(provider, config, name, base, memory, head, mac, ports)
+
+        return
+
+    # 1. Find machines defined in state file
+    # 2. Find machines defined in config
+    # 3. Start them all
+
+    provider_machines = config.list_machines('virtualbox')
+
+    # Check for multi-machine setup
+    machines = config.get_default('machines', [])
+    if not machines:
+        # Check for single machine setup
+        name = config.get_default('name')
+        if name:
+            machines = [name]
+
+    for machine in machines:
+        if machine in provider_machines:
+            continue
+        if 'virtualbox' == config.get_machine_default(machine, 'provider', 'virtualbox'):
+            provider_machines.append(machine)
+
+    if not provider_machines:
+        raise GenericException('No machines available.')
+
+    for machine in provider_machines:
+        _up(provider, config, machine, base, memory, head, mac, ports)
+
+def _up(provider, config, name, base, memory, head, mac, ports):
+    if not base:
+        base = config.get_machine_default(name, 'base')
+        if not base:
+            raise VirtualBoxException(
+                'Machine "%s" does not have a base specified.' % (name)
+            )
+
+    if not os.path.exists(base) or not os.path.isdir(base):
+        raise VirtualBoxException(
+            'Base directory "%s" does not exist.' % (base)
+        )
+
+    # Precedence: CLI override, machine-specific default, general default
+    _head, _memory, _mac, _ports = head, memory, mac, ports
+    if _head is None:
+        _head = not config.get_machine_default(name, 'headless', True)
+    if not _memory:
+        _memory = config.get_machine_default(name, 'memory')
+    if not _mac:
+        _mac = config.get_machine_default(name, 'network.nat.mac')
+    if not _ports:
+        _ports = config.get_machine_default(name, 'network.nat.ports')
+
     click.secho('Bringing up machine "%s"...' % (name), bold=True)
 
-    # create it if it doesn't exist
+    # Create it if it doesn't exist
     if not provider.load_machine(name, True):
         click.secho('==> Importing base machine "%s"...' % (base))
-        provider.create(name)
+        metadata = provider.get_base_metadata(base)
+        provider.create(name, metadata['os'])
 
         config.add_machine(name, {
             'provider': 'virtualbox',
             'id': provider.machine.id,
-            'headless': not head,
-            'memory': memory,
+            'headless': not _head,
+            'memory': _memory,
             'network': {
-                'mac': mac,
-                'ports': ports,
+                'nat': {
+                    'mac': _mac,
+                    'ports': _ports,
+                },
             },
         })
-        config.save()
+        config.save_state()
 
-        provider.clone_from(base)
+        provider.clone_from(metadata['media'])
 
     try:
         settings = config.get_machine(name)
     except Exception as e:
-        # If the settings aren't found, it's because the machine already existed.
+        # If the settings aren't found it's because the machine already existed
+        # in VirtualBox, but not as a drifter machine.
         raise VirtualBoxException('A machine named "%s" already exists.' % (name))
 
+    # If no CLI overrides, load startup options from saved settings
     if head is None:
-        head = not settings.get('headless', True)
+        head = not settings.get('headless', _head)
     if not memory:
-        memory = settings.get('memory', None)
+        memory = settings.get('memory', _memory)
     if not mac:
-        mac = settings.get('network', {}).get('mac', None)
+        mac = settings.get('network', {}).get('nat', {}).get('mac', _mac)
     if not ports:
-        ports = settings.get('network', {}).get('ports', None)
+        ports = settings.get('network', {}).get('nat', {}).get('ports', _ports)
 
+    click.secho('==> Starting machine...')
     provider.start(head, memory, mac, ports)
 
 @virtualbox.command()
@@ -83,10 +147,23 @@ def up(provider, config, name, base, memory, head, mac, ports):
 def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
 
+    if name:
+        _destroy(provider, config, name, force)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _destroy(provider, config, machine, force)
+
+def _destroy(provider, config, name, force):
     require_machine(config, name)
 
-    if not force:
-        commands.confirm_destroy(name)
+    if not force and not drifter.commands.confirm_destroy(name, False):
+        return
 
     click.secho('Destroying machine "%s"...' % (name), bold=True)
 
@@ -94,7 +171,7 @@ def destroy(provider, config, name, force):
     provider.destroy()
 
     config.remove_machine(name)
-    config.save()
+    config.save_state()
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -103,11 +180,25 @@ def destroy(provider, config, name, force):
 def halt(provider, config, name):
     """Halts a VirtualBox machine."""
 
+    if name:
+        _halt(provider, config, name)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _halt(provider, config, machine)
+
+def _halt(provider, config, name):
     require_machine(config, name)
 
     click.secho('Halting machine "%s"...' % (name), bold=True)
 
     provider.load_machine(name)
+    # TODO: This should probably try `sudo shutdown now`
     provider.stop()
 
 @virtualbox.command()
@@ -119,6 +210,7 @@ def halt(provider, config, name):
 def ssh(ctx, provider, config, name, command):
     """Opens a Secure Shell to a VirtualBox machine."""
 
+    name = resolve_name(config, name)
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
@@ -135,9 +227,24 @@ def ssh(ctx, provider, config, name, command):
 def rsync(ctx, provider, config, name, command):
     """Rsyncs files to a VirtualBox machine."""
 
+    if name:
+        _rsync(ctx, provider, config, name, command)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _rsync(ctx, provider, config, machine, command)
+
+def _rsync(ctx, provider, config, name, command):
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
+
+    click.secho('Rsyncing to machine "%s"...' % (name), bold=True)
 
     rsync_base.rsync_connect(config, [server], command=command,
         additional_args=ctx.obj['extra'])
@@ -153,12 +260,23 @@ def rsync(ctx, provider, config, name, command):
 def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
 
+    name = resolve_name(config, name)
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
         additional_args=ctx.obj['extra'], run_once=run_once, burst_limit=burst_limit)
+
+def resolve_name(config, name):
+    if not name:
+        machines = config.list_machines('virtualbox')
+        if machines:
+            name = machines.pop()
+        if not name:
+            raise GenericException('No machines available.')
+
+    return name
 
 def require_machine(config, name):
     config.get_machine(name)

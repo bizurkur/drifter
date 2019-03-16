@@ -4,47 +4,48 @@ import io
 import json
 import os
 import sys
-import yaml
 
 import click
+import yaml
 
 from drifter.exceptions import GenericException, InvalidArgumentException
 
 class Config(object):
     def __init__(self, folder=None):
-        self.data = {}
+        self.state = {}
         self.base_dir = folder or os.getcwd()
-        self.config_dir = '.drifter'
-        self.config_file = 'config.json'
+        self.state_dir = '.drifter'
+        self.state_file = 'state.json'
+        self.defaults = {}
         self.defaults_file = 'drifter.yaml'
         self.defaults_loaded = False
 
-    def get_path(self, path=None):
-        """Gets the path to the configuration file."""
+    def get_state_path(self, path=None):
+        """Gets the path to the state file."""
         if not path:
             path = self.base_dir
 
-        return os.path.join(path, self.config_dir, self.config_file)
+        return os.path.join(path, self.state_dir, self.state_file)
 
-    def get_dir(self):
-        """Gets the path to the configuration file directory."""
-        return os.path.join(self.base_dir, self.config_dir)
+    def get_state_dir(self):
+        """Gets the path to the state file directory."""
+        return os.path.join(self.base_dir, self.state_dir)
 
-    def load(self, path=None):
-        """Loads the configuration file."""
+    def load_state(self, path=None):
+        """Loads the state file."""
         if not path:
-            self.find()
-            path = self.get_path()
+            self._find_state_dir()
+            path = self.get_state_path()
 
         if not os.path.isfile(path):
             return
 
         try:
             with io.open(path, 'r') as handle:
-                self.data = json.load(handle)
+                self.state = json.load(handle)
         except IOError as e:
             click.secho(
-                'Configuration file "%s" is not readable.' % (path)
+                'State file "%s" is not readable.' % (path)
                     +' Check your file permissions.',
                 fg='red',
                 bold=True
@@ -52,89 +53,93 @@ class Config(object):
             sys.exit(1)
         except ValueError as e:
             click.secho(
-                'Configuration file "%s" seems to have invalid data.' % (path),
+                'State file "%s" seems to have invalid data.' % (path),
                 fg='red',
                 bold=True
             )
             if click.confirm('Would you like to reset it?'):
-                self.create()
+                self._reset_state()
             else:
                 click.echo('Aborted!')
                 sys.exit(1)
 
-    def find(self, path=None):
-        """Finds the configuration file.
-        Recursively looks in parent directories until a config is located.
-        """
-        if not path:
-            path = self.base_dir
-
-        filename = self.get_path(path)
-        if os.path.exists(filename):
-            self.base_dir = path
-
-            return None
-
-        parent = os.path.dirname(path)
-        if parent and parent != path:
-            return self.find(parent)
-
-        self.init()
-
-    def init(self):
-        """Creates a configuration file."""
-        config_dir = self.get_dir()
-        if not os.path.exists(config_dir):
-            os.mkdir(config_dir)
-
-        filename = self.get_path()
-        if not os.path.isfile(filename):
-            self.create()
-            self.save()
-
-    def create(self):
-        """Creates empty configuration settings."""
-        self.data = {
-            'defaults': {},
-            'selected': None,
-            'machines': {}
-        }
-
-    def save(self):
-        """Saves the configuration file."""
-        filename = self.get_path()
+    def save_state(self):
+        """Saves the state file."""
+        filename = self.get_state_path()
         with io.open(filename, 'w', encoding='utf-8') as handle:
-            data = json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
+            data = json.dumps(self.state, sort_keys=True, indent=4, separators=(',', ': '))
             handle.write(unicode(data))
 
-    def load_defaults(self):
-        self.data['defaults'] = {}
+    def add_machine(self, name, settings):
+        self.state['machines'][name] = settings
 
-        path = os.path.join(self.base_dir, self.defaults_file)
-        if not os.path.isfile(path):
-            return
+    def remove_machine(self, name):
+        if name in self.state['machines']:
+            del self.state['machines'][name]
 
-        try:
-            with io.open(path, 'r') as handle:
-                self.data['defaults'] = yaml.load(handle)
-        except IOError as e:
-            raise GenericException(
-                'Configuration file "%s" is not readable.' % (path)
-                    +' Check your file permissions.'
-            )
+    def has_machine(self, name):
+        if name in self.state['machines']:
+            return True
+
+        return False
+
+    def get_machine(self, name):
+        if name in self.state['machines']:
+            return self.state['machines'][name]
+
+        raise GenericException('Machine "%s" does not exist.' % (name))
+
+    def list_machines(self, provider=None):
+        machines = self.state['machines'].keys()
+        if not provider:
+            return machines
+
+        provider_machines = []
+        for machine in machines:
+            if provider == self.get_machine(machine).get('provider', None):
+                provider_machines.append(machine)
+
+        return provider_machines
+
+    def select_machine(self, name):
+        self.state['selected'] = name
+
+    def get_selected(self):
+        """Gets the selected machine.
+
+        Checks for environment variable DRIFTER_NAME, then the state file.
+        """
+        return os.environ.get('DRIFTER_NAME', self.state.get('selected', None))
+
+    def get_provider(self, name):
+        settings = self.get_machine(name)
+        provider = settings.get('provider', None)
+        if not provider:
+            raise GenericException('No provider set for "%s" machine.' % (name))
+
+        return provider
+
+    def get_machine_default(self, machine_name, setting_name, default=None):
+        # Get machine-specific setting
+        setting = self.get_default('machines.%s.%s' % (str(machine_name), setting_name))
+        if setting is not None:
+            return setting
+
+        # Get global setting
+        return self.get_default(setting_name, default)
 
     def get_default(self, name, default=None):
         if not self.defaults_loaded:
-            self.load_defaults()
+            self._load_defaults()
             self.defaults_loaded = True
 
-        if not isinstance(name, str):
+        if not isinstance(name, str) and not isinstance(name, unicode):
             raise InvalidArgumentException(
                 'Failed to load default value. Name must be a string.'
             )
 
         parts = name.split('.')
-        data = self.data['defaults']
+        data = self.defaults
         for part in parts:
             if not isinstance(data, dict) or part not in data:
                 return default
@@ -143,31 +148,55 @@ class Config(object):
 
         return data
 
-    def add_machine(self, name, settings):
-        self.data['machines'][name] = settings
+    def _load_defaults(self):
+        self.defaults = {}
 
-    def remove_machine(self, name):
-        if name in self.data['machines']:
-            del self.data['machines'][name]
+        path = os.path.join(self.base_dir, self.defaults_file)
+        if not os.path.isfile(path):
+            return
 
-    def has_machine(self, name):
-        if name in self.data['machines']:
-            return True
-
-        return False
-
-    def get_machine(self, name):
-        if name in self.data['machines']:
-            return self.data['machines'][name]
-
-        raise GenericException('Machine "%s" does not exist.' % (name))
-
-    def get_provider(self, name):
-        settings = self.get_machine(name)
-        provider = settings.get('provider', None)
-        if not provider:
+        try:
+            with io.open(path, 'r') as handle:
+                self.defaults = yaml.safe_load(handle)
+        except IOError as e:
             raise GenericException(
-                'No provider set for "%s" machine.' % (name)
+                'State file "%s" is not readable.' % (path)
+                    +' Check your file permissions.'
             )
 
-        return provider
+    def _find_state_dir(self, path=None):
+        """Finds the state file.
+        Recursively looks in parent directories until the directory is located.
+        """
+        if not path:
+            path = self.base_dir
+
+        filename = self.get_state_path(path)
+        if os.path.exists(filename):
+            self.base_dir = path
+
+            return
+
+        parent = os.path.dirname(path)
+        if parent and parent != path:
+            return self._find_state_dir(parent)
+
+        self._init_state()
+
+    def _init_state(self):
+        """Creates a state file, if one doesn't already exist."""
+        state_dir = self.get_state_dir()
+        if not os.path.exists(state_dir):
+            os.mkdir(state_dir)
+
+        filename = self.get_state_path()
+        if not os.path.isfile(filename):
+            self._reset_state()
+            self.save_state()
+
+    def _reset_state(self):
+        """Resets the state."""
+        self.state = {
+            'selected': None,
+            'machines': {}
+        }

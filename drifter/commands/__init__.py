@@ -5,13 +5,19 @@ import os
 
 import click
 
-from drifter.providers import get_providers
+from ..providers import get_providers
 
-# TODO: get default value
-# TODO: Blow up when no machines
+def _get_name(ctx, param, value):
+    if not value:
+        return ctx.obj['config'].get_selected()
+
+    return value
+
 name_argument = click.argument(
     'name',
-    metavar='NAME'
+    metavar='NAME',
+    default='',
+    callback=_get_name
 )
 
 force_option = click.option(
@@ -25,8 +31,6 @@ provider_option = click.option(
     '--provider',
     metavar='PROVIDER',
     type=click.Choice(get_providers()),
-    default='virtualbox',
-    show_default=True,
     help='Which provider to use.'
 )
 
@@ -37,8 +41,8 @@ command_option = click.option(
     help='Command to run after.'
 )
 
-def confirm_destroy(name):
-    return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=True)
+def confirm_destroy(name, abort=True):
+    return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=abort)
 
 def pass_config(f):
     @click.pass_context
