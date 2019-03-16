@@ -12,6 +12,7 @@ import drifter.commands
 import drifter.commands.rsync as rsync_base
 import drifter.commands.rsync_auto as rsync_auto_base
 import drifter.commands.ssh as ssh_base
+from drifter.exceptions import GenericException
 import drifter.providers
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
@@ -38,6 +39,39 @@ def virtualbox(ctx):
 def up(provider, config, name, base, memory, head, mac, ports):
     """Brings up a VirtualBox machine."""
 
+    # Start the named machine only
+    if name:
+        _up(provider, config, name, base, memory, head, mac, ports)
+
+        return
+
+    # 1. Find machines defined in state file
+    # 2. Find machines defined in config
+    # 3. Start them all
+
+    provider_machines = config.list_machines('virtualbox')
+
+    # Check for multi-machine setup
+    machines = config.get_default('machines', [])
+    if not machines:
+        # Check for single machine setup
+        name = config.get_default('name')
+        if name:
+            machines = [name]
+
+    for machine in machines:
+        if machine in provider_machines:
+            continue
+        if 'virtualbox' == config.get_machine_default(machine, 'provider', 'virtualbox'):
+            provider_machines.append(machine)
+
+    if not provider_machines:
+        raise GenericException('No machines available.')
+
+    for machine in provider_machines:
+        _up(provider, config, machine, base, memory, head, mac, ports)
+
+def _up(provider, config, name, base, memory, head, mac, ports):
     if not base:
         base = config.get_machine_default(name, 'base')
         if not base:
@@ -113,10 +147,23 @@ def up(provider, config, name, base, memory, head, mac, ports):
 def destroy(provider, config, name, force):
     """Destroys a VirtualBox machine."""
 
+    if name:
+        _destroy(provider, config, name, force)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _destroy(provider, config, machine, force)
+
+def _destroy(provider, config, name, force):
     require_machine(config, name)
 
-    if not force:
-        commands.confirm_destroy(name)
+    if not force and not drifter.commands.confirm_destroy(name, False):
+        return
 
     click.secho('Destroying machine "%s"...' % (name), bold=True)
 
@@ -133,11 +180,25 @@ def destroy(provider, config, name, force):
 def halt(provider, config, name):
     """Halts a VirtualBox machine."""
 
+    if name:
+        _halt(provider, config, name)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _halt(provider, config, machine)
+
+def _halt(provider, config, name):
     require_machine(config, name)
 
     click.secho('Halting machine "%s"...' % (name), bold=True)
 
     provider.load_machine(name)
+    # TODO: This should probably try `sudo shutdown now`
     provider.stop()
 
 @virtualbox.command()
@@ -149,6 +210,7 @@ def halt(provider, config, name):
 def ssh(ctx, provider, config, name, command):
     """Opens a Secure Shell to a VirtualBox machine."""
 
+    name = resolve_name(config, name)
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
@@ -165,9 +227,24 @@ def ssh(ctx, provider, config, name, command):
 def rsync(ctx, provider, config, name, command):
     """Rsyncs files to a VirtualBox machine."""
 
+    if name:
+        _rsync(ctx, provider, config, name, command)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _rsync(ctx, provider, config, machine, command)
+
+def _rsync(ctx, provider, config, name, command):
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
+
+    click.secho('Rsyncing to machine "%s"...' % (name), bold=True)
 
     rsync_base.rsync_connect(config, [server], command=command,
         additional_args=ctx.obj['extra'])
@@ -183,12 +260,23 @@ def rsync(ctx, provider, config, name, command):
 def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
 
+    name = resolve_name(config, name)
     require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
         additional_args=ctx.obj['extra'], run_once=run_once, burst_limit=burst_limit)
+
+def resolve_name(config, name):
+    if not name:
+        machines = config.list_machines('virtualbox')
+        if machines:
+            name = machines.pop()
+        if not name:
+            raise GenericException('No machines available.')
+
+    return name
 
 def require_machine(config, name):
     config.get_machine(name)

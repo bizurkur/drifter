@@ -41,8 +41,8 @@ command_option = click.option(
     help='Command to run after.'
 )
 
-def confirm_destroy(name):
-    return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=True)
+def confirm_destroy(name, abort=True):
+    return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=abort)
 
 def pass_config(f):
     @click.pass_context

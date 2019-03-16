@@ -11,6 +11,7 @@ from watchdog.observers import Observer
 import drifter.commands
 import drifter.commands.rsync as base_rsync
 import drifter.commands.ssh as base_ssh
+from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
 @click.command(context_settings={
@@ -23,6 +24,13 @@ from drifter.providers import invoke_provider_context
 @click.pass_context
 def rsync_auto(ctx, config, name, command):
     """Automatically rsyncs files to a machine."""
+
+    if not name:
+        machines = config.list_machines()
+        if machines:
+            name = machines.pop()
+        if not name:
+            raise GenericException('No machines available.')
 
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)

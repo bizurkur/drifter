@@ -89,8 +89,17 @@ class Config(object):
 
         raise GenericException('Machine "%s" does not exist.' % (name))
 
-    def list_machines(self):
-        return self.state['machines'].keys()
+    def list_machines(self, provider=None):
+        machines = self.state['machines'].keys()
+        if not provider:
+            return machines
+
+        provider_machines = []
+        for machine in machines:
+            if provider == self.get_machine(machine).get('provider', None):
+                provider_machines.append(machine)
+
+        return provider_machines
 
     def select_machine(self, name):
         self.state['selected'] = name

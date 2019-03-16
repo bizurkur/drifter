@@ -20,6 +20,7 @@ def run():
     except DrifterException as e:
         message = getattr(e, 'msg', e.message)
         click.secho('ERROR: %s' % (message), bold=True, fg='red')
+        sys.exit(1)
 
 def main():
     config = Config()

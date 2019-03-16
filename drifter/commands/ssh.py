@@ -4,6 +4,7 @@ import os
 import click
 
 import drifter.commands
+from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 from drifter.utils import get_cli
 
@@ -17,6 +18,13 @@ from drifter.utils import get_cli
 @click.pass_context
 def ssh(ctx, config, name, command):
     """Opens a Secure Shell to a machine."""
+
+    if not name:
+        machines = config.list_machines()
+        if machines:
+            name = machines.pop()
+        if not name:
+            raise GenericException('No machines available.')
 
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)

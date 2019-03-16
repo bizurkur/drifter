@@ -196,6 +196,8 @@ class Provider(object):
         return True
 
     def get_server_data(self):
+        logging.debug('Getting machine data...')
+
         server = {
             'redirects': [],
         }

@@ -29,8 +29,13 @@ def up(ctx, config, name, provider):
         # Check for single machine setup
         name = config.get_default('name')
         if not name:
-            raise GenericException('No machines to start up.')
+            raise GenericException('No machines available.')
         machines = [name]
+
+    # Add machines from state file
+    for machine in config.list_machines():
+        if machine not in machines:
+            machines.append(machine)
 
     for machine in machines:
         start_machine(ctx, config, machine, provider)
