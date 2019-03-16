@@ -5,7 +5,7 @@ import os
 
 import click
 
-from drifter.providers import get_providers
+from ..providers import get_providers
 
 # TODO: get default value
 # TODO: Blow up when no machines
