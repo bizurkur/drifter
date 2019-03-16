@@ -10,20 +10,30 @@ This is not intended as a 1-to-1 replacement for Vagrant. This is not a port fro
 
 ## Why make it?
 
-Vagrant is awesome and already does this - so why bother? On my computer Vagrant runs extremely slow - we're talking 30 seconds to a full minute just to *start* a command. I suspect it's so slow because Vagrant communicates to VirtualBox directly through the CLI. I believe this is a decision Vagrant made years ago for wider compatibility across different operating systems, but not 100% sure. Regardless as to why it's slow, the speed is not satisfactory to me. It hinders my ability to get work done and I don't like waiting forever to rsync something as simple as a single-line CSS change.
+Vagrant is awesome and already does this - so why bother? On my computer Vagrant runs extremely slow - we're talking 30 seconds to a full minute just to *start* a command. I suspect it's so slow because Vagrant communicates to VirtualBox directly through the CLI. I believe this is a decision Vagrant made years ago for wider compatibility across different operating systems, but not 100% sure. It's also possible it's my computer that is the bottleneck. Regardless as to why it's slow, the speed is not satisfactory to me. It hinders my ability to get work done and I don't like waiting forever to rsync something as simple as a single-line CSS change.
 
 I found out VirtualBox provides a Python SDK for interacting with VirtualBox over XPCOM. So I started tinkering with it. I quickly realized how much faster it was and decided to make my own tool.
 
 
 # Installation
 
-If you don't use `pipsi`, you're missing out.
-Here are [installation instructions](https://github.com/mitsuhiko/pipsi#readme).
+## Install VirtualBox SDK
 
-Simply run:
+First you need to install the VirtualBox Software Developer Kit (SDK), if not already installed. This provides access to the `vboxapi` Python package. To do that:
 
-    $ pipsi install .
+- Go to the [VirtualBox Downloads](https://www.virtualbox.org/wiki/Downloads) page.
+- Click the link for the Software Developer Kit.
+- Unzip the file.
+- If on MacOS or linux, run:
 
+
+    $ export VBOX_INSTALL_PATH=/usr/lib/virtualbox
+    $ sudo -E python vboxapisetup.py install
+
+
+## Install `drifter`
+
+    $ sudo -E python setup.py install
 
 # Usage
 
@@ -40,7 +50,14 @@ More docs will be added as commands get completed.
 
 Most, if not all, commands at the base level will be aliases for commands at the provider level. This means when you run `drifter up` that it is internally forwarding the command to `drifter <provider> up`. Since each provider can have different options it accepts, the base commands have a simplified help section. To view the full details of what options are available, you'd have to run `drifter <provider> <command> --help`.
 
-With the exception of the `up` command, all other commands detect which provider to use automatically.
+With the exception of the `up` command, all other commands automatically detect which provider to use based on the machine name given.
+
+- [up](#up-command)
+- [destroy](#destroy-command)
+- [halt](#halt-command)
+- [ssh](#ssh-command)
+- [rsync](#rsync-command)
+- [rsync-auto](#rsync-auto-command)
 
 ## `up` Command
 
@@ -84,15 +101,74 @@ The `halt` command shuts down a machine, but maintains all of its settings and f
 
 The `name` argument specifies the name of the machine to halt.
 
+## `ssh` Command
+
+The `ssh` command opens a secure shell (SSH) connection to a machine.
+
+### Arguments
+
+#### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+### Options
+
+#### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `-c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
+
+## `rsync` Command
+
+The `rsync` command remotely syncs files to a machine over SSH.
+
+### Arguments
+
+#### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+### Options
+
+#### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
+
+## `rsync-auto` Command
+
+The `rsync-auto` command remotely syncs files to a machine over SSH (exactly like the `rsync` command does), but it does it automatically when a file changes.
+
+### Arguments
+
+#### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+### Options
+
+#### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
+
 ----
 
 # Providers
+
+- [VirtualBox](#virtualbox)
 
 ## VirtualBox
 
 [VirtualBox](https://www.virtualbox.org/) is a free download and allows for creating virtual machines at a local level.
 
+- [up](#up-command-1)
+- [destroy](#destroy-command-1)
+- [halt](#halt-command-1)
+- [ssh](#ssh-command-1)
+- [rsync](#rsync-command-1)
+- [rsync-auto](#rsync-auto-command-1)
+
 ### `up` Command
+
+The `up` command brings machines up and gets them running. This may involve creating the machine if it doesn't exist or may simply require starting it if it is in a stopped state. This is typically the first command you will need to run.
 
 #### Arguments
 
@@ -126,6 +202,8 @@ The `--head` and `--no-head` options control whether or not to run the machine w
 
 ### `destroy` Command
 
+The `destroy` command shuts down a machine and removes all traces of its existence. You will be given a prompt for confirmation, as this action cannot be undone.
+
 #### Arguments
 
 ##### `name`
@@ -140,17 +218,93 @@ The `--force` option allows you to bypass the confirmation prompt and go straigh
 
 ### `halt` Command
 
+The `halt` command shuts down a machine, but maintains all of its settings and files.
+
 #### Arguments
 
 ##### `name`
 
 The `name` argument specifies the name of the machine to halt.
 
+### `ssh` Command
+
+The `ssh` command opens a secure shell (SSH) connection to a machine.
+
+#### Arguments
+
+##### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+#### Options
+
+##### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `-c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
+
+#### Additional Options
+
+This command allows for a direct interaction with the underlying system command and any argument or option can be passed to it. To pass in direct options, simply add a `--` (double hyphen) argument followed by whatever you want to pass in. For example, if you wanted to forward the authentication agent connection, you would do `drifter ssh <name> -- -A`. Or if you wanted to see the verbose connection details, `drifter ssh <name> -- -vvv`.
+
+### `rsync` Command
+
+The `rsync` command remotely syncs files to a machine over SSH.
+
+#### Arguments
+
+##### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+#### Options
+
+##### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
+
+The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
+
+#### Additional Options
+
+This command allows for a direct interaction with the underlying system command and any argument or option can be passed to it. To pass in direct options, simply add a `--` (double hyphen) argument followed by whatever you want to pass in. For example, if you wanted to exclude an additional file, you would do `drifter rsync <name> -- --exclude some.file`.
+
+### `rsync-auto` Command
+
+The `rsync-auto` command remotely syncs files to a machine over SSH (exactly like the `rsync` command does), but it does it automatically when a file changes.
+
+#### Arguments
+
+##### `name`
+
+The `name` argument specifies the name of the machine to connect to.
+
+#### Options
+
+##### `--command`, `-c`
+
+The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
+
+The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
+
+##### `--run-once`
+
+The `--run-once` option signals to only execute the `--command` option once. This is useful when the command specified runs continuously, so there's no need to start multiple instances of the command.
+
+##### `--burst-limit`
+
+The `--burst-limit` option prevents doing an rsync when a burst of files all change at the same time, e.g. when switching between git branches. Sometimes mass file changes can cause undesired effects and this is a way to prevent that. By default, the limit is `0` (disabled).
+
+It's worth noting that when a file changes, it may also trigger other events. All of those events are considered when determining if a "burst" happened. For example, saving a single file may trigger all of the following events: file change event, directory change event, and a lock file change event. Even though only one file was changed, a burst of three events would be seen. If `--burst-limit 2` was specified, the rsync would be ignored.
+
+#### Additional Options
+
+This command allows for a direct interaction with the underlying system command and any argument or option can be passed to it. To pass in direct options, simply add a `--` (double hyphen) argument followed by whatever you want to pass in. For example, if you wanted to exclude an additional file, you would do `drifter rsync-auto <name> -- --exclude some.file`.
+
 ----
 
 # Creating a Base Machine
 
-The base machine should create a `drifter` user and set up the default SSH keys.
+The base machine should create a `drifter` user and set up the default [SSH keys](https://github.com/bizurkur/drifter/tree/master/keys).
 
 TODO: Add more to this later.
 
@@ -159,8 +313,8 @@ TODO: Add more to this later.
 
 To enable Bash autocompletion:
 
-    $ _DRIFTER_COMPLETE=source drifter > drifter-complete.sh
+    $ _DRIFTER_COMPLETE=source drifter > ~/drifter-complete.sh
 
-Then add this line to your .bashrc file:
+Then add this line to your .bashrc or .bash_profile file:
 
-    . /path/to/drifter-complete.sh
+    . ~/drifter-complete.sh
