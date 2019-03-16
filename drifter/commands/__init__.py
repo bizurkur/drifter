@@ -11,7 +11,8 @@ from ..providers import get_providers
 # TODO: Blow up when no machines
 name_argument = click.argument(
     'name',
-    metavar='NAME'
+    metavar='NAME',
+    default=''
 )
 
 force_option = click.option(
@@ -25,8 +26,6 @@ provider_option = click.option(
     '--provider',
     metavar='PROVIDER',
     type=click.Choice(get_providers()),
-    default='virtualbox',
-    show_default=True,
     help='Which provider to use.'
 )
 

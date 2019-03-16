@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 from time import sleep
+from xml.dom import minidom
 
 import vboxapi
 
@@ -56,6 +57,7 @@ class Provider(object):
         try:
             self.session.unlockMachine()
         except Exception as e:
+            logging.debug('Failed to release lock?')
             pass
 
         # Give it a moment to release the lock
@@ -77,19 +79,25 @@ class Provider(object):
         logging.debug('Machine is running.')
         return True
 
-    def create(self, name):
-        logging.debug('Creating machine...')
+    def create(self, name, os_type):
+        logging.debug('Creating machine "%s"...' % (name))
 
-        # TODO: Ubuntu should not be hard-coded.
-        # This metadata is apparently available in the base dir.
-        self.machine = self.vbox.createMachine('', name, [], 'Ubuntu_64', '')
+        try:
+            self.machine = self.vbox.createMachine('', name, [], os_type, '')
+        except Exception as e:
+            logging.debug('Create failed. Aborting...')
+
+            message = getattr(e, 'msg', e.message)
+            raise VirtualBoxException(
+                'Failed to create machine: %s' % (message)
+            )
 
         logging.debug('Registering machine...')
         try:
             self.vbox.registerMachine(self.machine)
         except Exception as e:
-            # cleanup any config data that was saved
-            logging.debug('Registration failed. Cleaning up config...')
+            # Clean up any data that was saved
+            logging.debug('Registration failed. Cleaning up...')
             try:
                 progress = self.machine.deleteConfig([])
                 progress.waitForCompletion(-1)
@@ -101,17 +109,8 @@ class Provider(object):
                 'Failed to register machine: %s' % (message)
             )
 
-    def clone_from(self, base):
+    def clone_from(self, disks):
         logging.debug('Creating disk clones...')
-
-        disks = []
-        for path in os.listdir(base):
-            filename = os.path.join(base, path)
-            if not os.path.isfile(filename):
-                continue
-
-            if filename.endswith('.vmdk') or filename.endswith('.vdi'):
-                disks.append(filename)
 
         portCount = len(disks)
         storage = self._create_storage(portCount)
@@ -159,7 +158,7 @@ class Provider(object):
             self._configure_networks(mac)
             self._forward_ports(ports)
 
-        logging.debug('Starting machine...')
+        logging.debug('Launching machine...')
         try:
             progress = self.machine.launchVMProcess(
                 self.session,
@@ -228,6 +227,47 @@ class Provider(object):
             self.release_lock()
 
         return server
+
+    def get_base_metadata(self, base):
+        logging.debug('Detecting settings for "%s"...' % (base))
+
+        os_type = None
+        media = []
+
+        machine = None
+        for path in os.listdir(base):
+            filename = os.path.join(base, path)
+            if not os.path.isfile(filename):
+                continue
+
+            if filename.endswith('.vbox'):
+                xml = minidom.parse(filename)
+                machines = xml.getElementsByTagName('Machine')
+                if machines:
+                    machine = machines[0]
+                break
+
+        if not machine:
+            raise VirtualBoxException(
+                'Unable to find settings for "%s".' % (base)
+            )
+
+        os_type = machine.attributes.get('OSType', None)
+        if not os_type:
+            raise VirtualBoxException(
+                'Unable to determine "%s" OS type.' % (base)
+            )
+
+        disks = machine.getElementsByTagName('HardDisk')
+        for disk in disks:
+            loc = disk.attributes.get('location', None)
+            if loc:
+                media.append(os.path.join(base, loc.value))
+
+        return {
+            'os': os_type.value,
+            'media': media,
+        }
 
     def _create_storage(self, portCount):
         logging.debug('Creating storage...')
@@ -343,7 +383,7 @@ class Provider(object):
             # networkB.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
             # networkB.enabled = True
             # networkB.cableConnected = True
-            # # networkB.MACAddress =
+            # networkB.MACAddress =
             # networkB.hostOnlyInterface = "vboxnet0"
 
             self.session.machine.saveSettings()
@@ -404,6 +444,8 @@ class Provider(object):
         port_list = []
         if not ports:
             ports = ''
+        elif isinstance(ports, list):
+            ports = self._merge_ports(ports)
 
         allowed_protocols = {
             'tcp': self.manager.constants.NATProtocol_TCP,

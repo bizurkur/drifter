@@ -48,7 +48,7 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
         if filelist:
             command = command.replace('{}', '"%s"' % ('" "'.join(filelist)))
 
-        # run the command on each server
+        # Run the command on each server
         for server in servers:
             this_command = base_command[:] + [
                 '%s@%s' % (
@@ -63,7 +63,7 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
 
         return responses
 
-    # connect to the first server only
+    # Connect to the first server only
     base_command += [
         '%s@%s' % (
             servers[0].get('username', default_username),
