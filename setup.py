@@ -19,6 +19,7 @@ setup(
         'click',
         'PyYAML',
         'watchdog',
+        'defusedxml',
     ],
 
     entry_points='''

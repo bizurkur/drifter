@@ -1,0 +1,12 @@
+
+dist: trusty
+
+language: python
+php:
+  # until 2020-01-01
+  - '2.7'
+  - '3.4'
+
+install: pip install tox-travis
+
+script: tox

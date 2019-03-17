@@ -1,25 +1,26 @@
-from __future__ import print_function, absolute_import, division
+"""Show available commands."""
+from __future__ import absolute_import, division, print_function
 
 import click
 
-@click.command(context_settings={
+
+@click.command(name='help', context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 }, add_help_option=False)
 @click.pass_context
-def help(ctx):
-    """Shows help."""
-
-    click.echo("""
+def help_command(ctx):
+    """Show available commands."""
+    click.echo(r"""
      __________________________________________________________
-    /  ________________________/  ___________________________  \\
-   /  /  _____/  /____  /__/__/  /_____/  /________  _____   \  \\
+    /  ________________________/  ___________________________  \
+   /  /  _____/  /____  /__/__/  /_____/  /________  _____   \  \
   /  /  /  __   /  ___\/  /__   ___/__   ___/  __  \/  ___\  /  /
  /  /  /  /_/  /  /   /  /  /  /     /  /_ /  /___ /  /     /  /
 /  /   \______/\_/    \_/  /  /      \___/ \______/\_/     /  /
 \  \______________________/  /____________________________/  /
  \__________________________/_______________________________/
 
-Drifter """+ctx.obj['meta']['version']+""" by """+ctx.obj['meta']['author']+"""
-""")
+Drifter {0} by {1}
+""".format(ctx.obj['meta']['version'], ctx.obj['meta']['author']))
     click.echo(ctx.parent.get_help())

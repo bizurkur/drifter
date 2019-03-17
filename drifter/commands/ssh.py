@@ -1,4 +1,6 @@
-from __future__ import print_function, absolute_import, division
+"""Open a Secure Shell to a machine."""
+from __future__ import absolute_import, division, print_function
+
 import os
 
 import click
@@ -8,17 +10,17 @@ from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 from drifter.utils import get_cli
 
+
 @click.command(context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 })
 @drifter.commands.name_argument
 @drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
 def ssh(ctx, config, name, command):
-    """Opens a Secure Shell to a machine."""
-
+    """Open a Secure Shell to a machine."""
     if not name:
         machines = config.list_machines()
         if machines:
@@ -29,9 +31,9 @@ def ssh(ctx, config, name, command):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
-def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
-    """Opens an SSH connection to the given server."""
 
+def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
+    """Open an SSH connection to the given server."""
     base_command = ['ssh'] + additional_args
 
     default_username = config.get_default('ssh.username', 'drifter')
@@ -43,7 +45,7 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
             '-o',
             'LogLevel=ERROR',
             '-o',
-            'UserKnownHostsFile=/dev/null'
+            'UserKnownHostsFile=/dev/null',
         ]
 
     private_key = config.get_default('ssh.private_key_path', None)
@@ -54,12 +56,12 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
         responses = []
 
         if filelist:
-            command = command.replace('{}', '"%s"' % ('" "'.join(filelist)))
+            command = command.replace('{}', '"{0}"'.format('" "'.join(filelist)))
 
         # Run the command on each server
         for server in servers:
             this_command = base_command[:] + [
-                '%s@%s' % (
+                '{0}@{1}'.format(
                     server.get('username', default_username),
                     server['ssh_host'],
                 ),
@@ -73,7 +75,7 @@ def ssh_connect(config, servers, additional_args=[], command=None, filelist=None
 
     # Connect to the first server only
     base_command += [
-        '%s@%s' % (
+        '{0}@{1}'.format(
             servers[0].get('username', default_username),
             servers[0]['ssh_host'],
         ),

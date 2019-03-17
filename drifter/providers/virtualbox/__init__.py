@@ -1,31 +1,29 @@
 """VirtualBox provider."""
+from __future__ import absolute_import, division, print_function
 
-from __future__ import print_function, absolute_import, division
-import logging
 import os
-import sys
 
 import click
-import vboxapi
 
 import drifter.commands
 import drifter.commands.rsync as rsync_base
 import drifter.commands.rsync_auto as rsync_auto_base
 import drifter.commands.ssh as ssh_base
-from drifter.exceptions import GenericException
 import drifter.providers
+from drifter.exceptions import GenericException
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
+
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 def virtualbox(ctx):
-    """Manages VirtualBox machines."""
-
+    """Manage VirtualBox machines."""
     if 'provider' not in ctx.obj:
         ctx.obj['provider'] = Provider()
 
     if not ctx.invoked_subcommand:
         click.echo(ctx.get_help())
+
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -37,8 +35,7 @@ def virtualbox(ctx):
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def up(provider, config, name, base, memory, head, mac, ports):
-    """Brings up a VirtualBox machine."""
-
+    """Bring up a VirtualBox machine."""
     # Start the named machine only
     if name:
         _up(provider, config, name, base, memory, head, mac, ports)
@@ -71,35 +68,16 @@ def up(provider, config, name, base, memory, head, mac, ports):
     for machine in provider_machines:
         _up(provider, config, machine, base, memory, head, mac, ports)
 
+
 def _up(provider, config, name, base, memory, head, mac, ports):
-    if not base:
-        base = config.get_machine_default(name, 'base')
-        if not base:
-            raise VirtualBoxException(
-                'Machine "%s" does not have a base specified.' % (name)
-            )
+    base, _head, _memory, _mac, _ports = _resolve_up_args(config, name, base,
+                                                          memory, head, mac, ports)
 
-    if not os.path.exists(base) or not os.path.isdir(base):
-        raise VirtualBoxException(
-            'Base directory "%s" does not exist.' % (base)
-        )
-
-    # Precedence: CLI override, machine-specific default, general default
-    _head, _memory, _mac, _ports = head, memory, mac, ports
-    if _head is None:
-        _head = not config.get_machine_default(name, 'headless', True)
-    if not _memory:
-        _memory = config.get_machine_default(name, 'memory')
-    if not _mac:
-        _mac = config.get_machine_default(name, 'network.nat.mac')
-    if not _ports:
-        _ports = config.get_machine_default(name, 'network.nat.ports')
-
-    click.secho('Bringing up machine "%s"...' % (name), bold=True)
+    click.secho('Bringing up machine "{0}"...'.format(name), bold=True)
 
     # Create it if it doesn't exist
     if not provider.load_machine(name, True):
-        click.secho('==> Importing base machine "%s"...' % (base))
+        click.secho('==> Importing base machine "{0}"...'.format(base))
         metadata = provider.get_base_metadata(base)
         provider.create(name, metadata['os'])
 
@@ -121,10 +99,10 @@ def _up(provider, config, name, base, memory, head, mac, ports):
 
     try:
         settings = config.get_machine(name)
-    except Exception as e:
+    except Exception:
         # If the settings aren't found it's because the machine already existed
         # in VirtualBox, but not as a drifter machine.
-        raise VirtualBoxException('A machine named "%s" already exists.' % (name))
+        raise VirtualBoxException('A machine named "{0}" already exists.'.format(name))
 
     # If no CLI overrides, load startup options from saved settings
     if head is None:
@@ -139,14 +117,41 @@ def _up(provider, config, name, base, memory, head, mac, ports):
     click.secho('==> Starting machine...')
     provider.start(head, memory, mac, ports)
 
+
+def _resolve_up_args(config, name, base, head, memory, mac, ports):
+    if not base:
+        base = config.get_machine_default(name, 'base')
+        if not base:
+            raise VirtualBoxException(
+                'Machine "{0}" does not have a base specified.'.format(name),
+            )
+
+    if not os.path.exists(base) or not os.path.isdir(base):
+        raise VirtualBoxException(
+            'Base directory "{0}" does not exist.'.format(base),
+        )
+
+    # Precedence: CLI override, machine-specific default, general default
+    _head, _memory, _mac, _ports = head, memory, mac, ports
+    if _head is None:
+        _head = not config.get_machine_default(name, 'headless', True)
+    if not _memory:
+        _memory = config.get_machine_default(name, 'memory')
+    if not _mac:
+        _mac = config.get_machine_default(name, 'network.nat.mac')
+    if not _ports:
+        _ports = config.get_machine_default(name, 'network.nat.ports')
+
+    return (base, _head, _memory, _mac, _ports)
+
+
 @virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.force_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def destroy(provider, config, name, force):
-    """Destroys a VirtualBox machine."""
-
+    """Destroy a VirtualBox machine."""
     if name:
         _destroy(provider, config, name, force)
 
@@ -159,27 +164,30 @@ def destroy(provider, config, name, force):
     for machine in machines:
         _destroy(provider, config, machine, force)
 
+
 def _destroy(provider, config, name, force):
-    require_machine(config, name)
+    _require_machine(config, name)
 
     if not force and not drifter.commands.confirm_destroy(name, False):
         return
 
-    click.secho('Destroying machine "%s"...' % (name), bold=True)
+    click.secho('Destroying machine "{0}"...'.format(name), bold=True)
 
     provider.load_machine(name)
     provider.destroy()
 
     config.remove_machine(name)
+    if config.get_selected() == name:
+        config.set_selected(None)
     config.save_state()
+
 
 @virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def halt(provider, config, name):
-    """Halts a VirtualBox machine."""
-
+    """Halt a VirtualBox machine."""
     if name:
         _halt(provider, config, name)
 
@@ -192,14 +200,16 @@ def halt(provider, config, name):
     for machine in machines:
         _halt(provider, config, machine)
 
-def _halt(provider, config, name):
-    require_machine(config, name)
 
-    click.secho('Halting machine "%s"...' % (name), bold=True)
+def _halt(provider, config, name):
+    _require_machine(config, name)
+
+    click.secho('Halting machine "{0}"...'.format(name), bold=True)
 
     provider.load_machine(name)
     # TODO: This should probably try `sudo shutdown now`
     provider.stop()
+
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -208,15 +218,15 @@ def _halt(provider, config, name):
 @drifter.providers.pass_provider
 @click.pass_context
 def ssh(ctx, provider, config, name, command):
-    """Opens a Secure Shell to a VirtualBox machine."""
-
-    name = resolve_name(config, name)
-    require_running_machine(config, name, provider)
+    """Open a Secure Shell to a VirtualBox machine."""
+    name = _resolve_name(config, name)
+    _require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
     ssh_base.ssh_connect(config, [server], command=command,
-        additional_args=ctx.obj['extra'])
+                         additional_args=ctx.obj['extra'])
+
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -225,8 +235,7 @@ def ssh(ctx, provider, config, name, command):
 @drifter.providers.pass_provider
 @click.pass_context
 def rsync(ctx, provider, config, name, command):
-    """Rsyncs files to a VirtualBox machine."""
-
+    """Rsync files to a VirtualBox machine."""
     if name:
         _rsync(ctx, provider, config, name, command)
 
@@ -239,15 +248,17 @@ def rsync(ctx, provider, config, name, command):
     for machine in machines:
         _rsync(ctx, provider, config, machine, command)
 
+
 def _rsync(ctx, provider, config, name, command):
-    require_running_machine(config, name, provider)
+    _require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    click.secho('Rsyncing to machine "%s"...' % (name), bold=True)
+    click.secho('Rsyncing to machine "{0}"...'.format(name), bold=True)
 
     rsync_base.rsync_connect(config, [server], command=command,
-        additional_args=ctx.obj['extra'])
+                             additional_args=ctx.obj['extra'])
+
 
 @virtualbox.command()
 @drifter.commands.name_argument
@@ -259,16 +270,17 @@ def _rsync(ctx, provider, config, name, command):
 @click.pass_context
 def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
-
-    name = resolve_name(config, name)
-    require_running_machine(config, name, provider)
+    name = _resolve_name(config, name)
+    _require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
-        additional_args=ctx.obj['extra'], run_once=run_once, burst_limit=burst_limit)
+                                       additional_args=ctx.obj['extra'],
+                                       run_once=run_once, burst_limit=burst_limit)
 
-def resolve_name(config, name):
+
+def _resolve_name(config, name):
     if not name:
         machines = config.list_machines('virtualbox')
         if machines:
@@ -278,11 +290,13 @@ def resolve_name(config, name):
 
     return name
 
-def require_machine(config, name):
+
+def _require_machine(config, name):
     config.get_machine(name)
 
-def require_running_machine(config, name, provider):
-    require_machine(config, name)
+
+def _require_running_machine(config, name, provider):
+    _require_machine(config, name)
 
     provider.load_machine(name)
     if not provider.is_running():
