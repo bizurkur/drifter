@@ -1,8 +1,11 @@
-from __future__ import print_function, absolute_import, division
+"""Utility functions."""
+from __future__ import absolute_import, division, print_function
+
 import subprocess
 
 
-def get_cli(cmd, output=False, shell=False):
+def get_cli(cmd, output=False):
+    """Execute a command and return the response."""
     command = cmd
     if isinstance(cmd, list):
         command = map(str, command)
@@ -11,11 +14,11 @@ def get_cli(cmd, output=False, shell=False):
 
     process = subprocess.Popen(
         command,
-        shell=shell,
+        shell=False,
         stdin=None if output else subprocess.PIPE,
         stdout=None if output else subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        close_fds=True
+        close_fds=True,
     )
     result = process.communicate()
 

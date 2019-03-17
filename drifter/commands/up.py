@@ -1,4 +1,5 @@
-from __future__ import print_function, absolute_import, division
+"""Bring up a machine."""
+from __future__ import absolute_import, division, print_function
 
 import click
 
@@ -9,15 +10,14 @@ from drifter.providers import invoke_provider_context
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 })
 @drifter.commands.name_argument
 @drifter.commands.provider_option
 @drifter.commands.pass_config
 @click.pass_context
 def up(ctx, config, name, provider):
-    """Brings up a machine."""
-
+    """Bring up a machine."""
     # Start the named machine only
     if name:
         _up(ctx, config, name, provider)
@@ -44,7 +44,7 @@ def up(ctx, config, name, provider):
 
 def _up(ctx, config, name, provider):
     # Precedence: machine-specific, CLI override, config default, 'virtualbox'
-    machine_provider = config.get_default('machines.%s.provider' % (name), provider)
+    machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
         machine_provider = config.get_default('provider', 'virtualbox')
 
@@ -56,10 +56,10 @@ def _up(ctx, config, name, provider):
         current_provider = config.get_machine(name).get('provider', '')
         if current_provider != provider:
             raise GenericException(
-                'Machine name "%s" is already in use by the "%s" provider.' % (
+                'Machine name "{0}" is already in use by the "{1}" provider.'.format(
                     name,
-                    current_provider
-                )
+                    current_provider,
+                ),
             )
 
     invoke_provider_context(ctx, machine_provider, [name] + ctx.args)

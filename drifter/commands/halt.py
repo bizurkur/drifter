@@ -1,4 +1,5 @@
-from __future__ import print_function, absolute_import, division
+"""Halt a machine."""
+from __future__ import absolute_import, division, print_function
 
 import click
 
@@ -9,14 +10,13 @@ from drifter.providers import invoke_provider_context
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 })
 @drifter.commands.name_argument
 @drifter.commands.pass_config
 @click.pass_context
 def halt(ctx, config, name):
-    """Halts a machine."""
-
+    """Halt a machine."""
     # Halt the named machine only
     if name:
         _halt(ctx, config, name)

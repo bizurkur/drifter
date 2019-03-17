@@ -1,10 +1,13 @@
-from __future__ import print_function, absolute_import, division
-from fnmatch import fnmatch
+"""Automatically rsync files to a machine."""
+from __future__ import absolute_import, division, print_function
+
 import os
-from threading import Thread, BoundedSemaphore
+from fnmatch import fnmatch
+from threading import BoundedSemaphore, Thread
 from time import sleep
 
 import click
+
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -17,15 +20,14 @@ from drifter.providers import invoke_provider_context
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 })
 @drifter.commands.name_argument
 @drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
 def rsync_auto(ctx, config, name, command):
-    """Automatically rsyncs files to a machine."""
-
+    """Automatically rsync files to a machine."""
     if not name:
         machines = config.list_machines()
         if machines:
@@ -41,6 +43,7 @@ class RsyncHandler(FileSystemEventHandler):
     """Class to handle rsync events."""
 
     def __init__(self, config, servers, **kwargs):
+        """Set up the handler."""
         super(RsyncHandler, self).__init__()
         self.config = config
         self.servers = servers
@@ -51,16 +54,15 @@ class RsyncHandler(FileSystemEventHandler):
         self.semaphore = BoundedSemaphore()
 
     def process(self, event):
-        """Processes the event."""
+        """Process the event."""
         Thread(target=self.delay_rsync, args=(event,)).start()
 
     def on_any_event(self, event):
-        """Processes all events."""
+        """Process all events."""
         self.process(event)
 
     def delay_rsync(self, event):
-        """Delays the rsync to allow for multiple simultaneous saves."""
-
+        """Delay the rsync to allow for multiple simultaneous saves."""
         local_path = self.kwargs['local_path']
         remote_path = self.kwargs['remote_path']
 
@@ -86,7 +88,7 @@ class RsyncHandler(FileSystemEventHandler):
 
         burst_mode = False
         if not has_command:
-            click.secho('Rsyncing folder: %s => %s' % (local_path, remote_path), bold=True)
+            click.secho('Rsyncing folder: {0} => {1}'.format(local_path, remote_path), bold=True)
         elif self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
             click.secho('Burst limit exceeded; ignoring rsync', bold=True)
             self.files = {}
@@ -128,7 +130,7 @@ class RsyncHandler(FileSystemEventHandler):
 
 def rsync_auto_connect(config, servers, additional_args=[], command=None, run_once=False,
                        burst_limit=0, verbose=True, local_path=None, remote_path=None):
-
+    """Launch rsync-auto for providers."""
     local_path = base_rsync._get_local_path(config, local_path)
     remote_path = base_rsync._get_remote_path(config, remote_path)
 
@@ -142,10 +144,10 @@ def rsync_auto_connect(config, servers, additional_args=[], command=None, run_on
         for server in servers:
             Thread(
                 target=base_ssh.ssh_connect,
-                args=(config, [server],),
+                args=(config, [server]),
                 kwargs={
-                    'command': command
-                }
+                    'command': command,
+                },
             ).start()
 
         command = None
@@ -173,14 +175,14 @@ def _show_monitoring_message(config):
 
     include_list = config.get_default('rsync.include', [])
     if include_list:
-        message += '; including [ "%s" ]' % (
-            '", "'.join(include_list)
+        message += '; including [ "{0}" ]'.format(
+            '", "'.join(include_list),
         )
 
     exclude_list = config.get_default('rsync.exclude', [])
     if exclude_list:
-        message += '; excluding [ "%s" ]' % (
-            '", "'.join(exclude_list)
+        message += '; excluding [ "{0}" ]'.format(
+            '", "'.join(exclude_list),
         )
 
     click.secho(message, bold=True)

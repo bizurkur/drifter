@@ -1,18 +1,23 @@
+"""Handle configuration settings."""
+from __future__ import absolute_import, division, print_function
 
-from __future__ import print_function, absolute_import, division
 import io
 import json
 import os
 import sys
 
 import click
+
 import yaml
 
 from drifter.exceptions import GenericException, InvalidArgumentException
 
 
 class Config(object):
+    """Handle configuration settings."""
+
     def __init__(self, folder=None):
+        """Set up the configuration handles."""
         self.state = {}
         self.base_dir = folder or os.getcwd()
         self.state_dir = '.drifter'
@@ -22,18 +27,18 @@ class Config(object):
         self.defaults_loaded = False
 
     def get_state_path(self, path=None):
-        """Gets the path to the state file."""
+        """Get the path to the state file."""
         if not path:
             path = self.base_dir
 
         return os.path.join(path, self.state_dir, self.state_file)
 
     def get_state_dir(self):
-        """Gets the path to the state file directory."""
+        """Get the path to the state file directory."""
         return os.path.join(self.base_dir, self.state_dir)
 
     def load_state(self, path=None):
-        """Loads the state file."""
+        """Load the state file."""
         if not path:
             self._find_state_dir()
             path = self.get_state_path()
@@ -46,16 +51,16 @@ class Config(object):
                 self.state = json.load(handle)
         except IOError:
             click.secho(
-                'State file "%s" is not readable. Check your file permissions.' % (path),
+                'State file "{0}" is not readable. Check your file permissions.'.format(path),
                 fg='red',
-                bold=True
+                bold=True,
             )
             sys.exit(1)
         except ValueError:
             click.secho(
-                'State file "%s" seems to have invalid data.' % (path),
+                'State file "{0}" seems to have invalid data.'.format(path),
                 fg='red',
-                bold=True
+                bold=True,
             )
             if click.confirm('Would you like to reset it?'):
                 self._reset_state()
@@ -64,32 +69,40 @@ class Config(object):
                 sys.exit(1)
 
     def save_state(self):
-        """Saves the state file."""
+        """Save the state file."""
         filename = self.get_state_path()
         with io.open(filename, 'w', encoding='utf-8') as handle:
             data = json.dumps(self.state, sort_keys=True, indent=4, separators=(',', ': '))
             handle.write(unicode(data))
 
     def add_machine(self, name, settings):
+        """Add a machine."""
         self.state['machines'][name] = settings
 
     def remove_machine(self, name):
+        """Remove a machine."""
         if name in self.state['machines']:
             del self.state['machines'][name]
 
     def has_machine(self, name):
+        """Check if a machine exists."""
         if name in self.state['machines']:
             return True
 
         return False
 
     def get_machine(self, name):
+        """Get metadata for a machine."""
         if name in self.state['machines']:
             return self.state['machines'][name]
 
-        raise GenericException('Machine "%s" does not exist.' % (name))
+        raise GenericException('Machine "{0}" does not exist.'.format(name))
 
     def list_machines(self, provider=None):
+        """List all available machines.
+
+        Optionally, machines can be limited to a specific provider.
+        """
         machines = self.state['machines'].keys()
         if not provider:
             return machines
@@ -102,26 +115,29 @@ class Config(object):
         return provider_machines
 
     def select_machine(self, name):
+        """Set the given machine as selected."""
         self.state['selected'] = name
 
     def get_selected(self):
-        """Gets the selected machine.
+        """Get the selected machine.
 
         Checks for environment variable DRIFTER_NAME, then the state file.
         """
         return os.environ.get('DRIFTER_NAME', self.state.get('selected', None))
 
     def get_provider(self, name):
+        """Get the provider for a machine."""
         settings = self.get_machine(name)
         provider = settings.get('provider', None)
         if not provider:
-            raise GenericException('No provider set for "%s" machine.' % (name))
+            raise GenericException('No provider set for the "{0}" machine.'.format(name))
 
         return provider
 
     def get_machine_default(self, machine_name, setting_name, default=None):
+        """Get a machine-specific default, with fallback to the global default."""
         # Get machine-specific setting
-        setting = self.get_default('machines.%s.%s' % (str(machine_name), setting_name))
+        setting = self.get_default('machines.{0}.{1}'.format(machine_name, setting_name))
         if setting is not None:
             return setting
 
@@ -129,13 +145,17 @@ class Config(object):
         return self.get_default(setting_name, default)
 
     def get_default(self, name, default=None):
+        """Get the default value to use for a setting.
+
+        Use dots to traverse nested dictionary values.
+        """
         if not self.defaults_loaded:
             self._load_defaults()
             self.defaults_loaded = True
 
         if not isinstance(name, str) and not isinstance(name, unicode):
             raise InvalidArgumentException(
-                'Failed to load default value. Name must be a string.'
+                'Failed to load default value. Name must be a string.',
             )
 
         parts = name.split('.')
@@ -160,11 +180,12 @@ class Config(object):
                 self.defaults = yaml.safe_load(handle)
         except IOError:
             raise GenericException(
-                'State file "%s" is not readable. Check your file permissions.' % (path)
+                'State file "{0}" is not readable. Check your file permissions.'.format(path),
             )
 
     def _find_state_dir(self, path=None):
-        """Finds the state file.
+        """Find the state file.
+
         Recursively looks in parent directories until the directory is located.
         """
         if not path:
@@ -183,7 +204,7 @@ class Config(object):
         self._init_state()
 
     def _init_state(self):
-        """Creates a state file, if one doesn't already exist."""
+        """Create a state file, if one doesn't already exist."""
         state_dir = self.get_state_dir()
         if not os.path.exists(state_dir):
             os.mkdir(state_dir)
@@ -194,8 +215,8 @@ class Config(object):
             self.save_state()
 
     def _reset_state(self):
-        """Resets the state."""
+        """Reset the state."""
         self.state = {
             'selected': None,
-            'machines': {}
+            'machines': {},
         }

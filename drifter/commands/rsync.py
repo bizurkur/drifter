@@ -1,4 +1,6 @@
-from __future__ import print_function, absolute_import, division
+"""Rsync files to a machine."""
+from __future__ import absolute_import, division, print_function
+
 import os
 
 import click
@@ -12,15 +14,14 @@ from drifter.utils import get_cli
 
 @click.command(context_settings={
     'ignore_unknown_options': True,
-    'allow_extra_args': True
+    'allow_extra_args': True,
 })
 @drifter.commands.name_argument
 @drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
 def rsync(ctx, config, name, command):
-    """Rsyncs files to a machine."""
-
+    """Rsync files to a machine."""
     # Rsync to the named machine only
     if name:
         _rsync(ctx, config, name, command)
@@ -43,8 +44,7 @@ def _rsync(ctx, config, name, command):
 
 def rsync_connect(config, servers, additional_args=[], command=None, filelist=None,
                   verbose=True, local_path=None, remote_path=None, **kwargs):
-    """Rsyncs files to the given servers via SSH."""
-
+    """Rsync files to the given servers via SSH."""
     local_path = _get_local_path(config, local_path)
     remote_path = _get_remote_path(config, remote_path)
 
@@ -57,14 +57,14 @@ def rsync_connect(config, servers, additional_args=[], command=None, filelist=No
 
     private_key = config.get_default('ssh.private_key_path', None)
     if private_key:
-        ssh_params += ' -i "%s"' % (private_key)
+        ssh_params += ' -i "{0}"'.format(private_key)
 
     for server in servers:
         this_command = base_command[:] + additional_args + [
             '-e',
-            'ssh -p %s%s' % (server['ssh_port'], ssh_params),
+            'ssh -p {0}{1}'.format(server['ssh_port'], ssh_params),
             local_path,
-            '%s@%s:%s' % (
+            '{0}@{1}:{2}'.format(
                 server.get('username', default_username),
                 server['ssh_host'],
                 remote_path,
@@ -78,13 +78,11 @@ def rsync_connect(config, servers, additional_args=[], command=None, filelist=No
             config,
             servers,
             command=command,
-            filelist=filelist
+            filelist=filelist,
         )
 
 
 def _get_base_command(config):
-    """Gets the base rsync command."""
-
     command = ['rsync', '--rsync-path', 'sudo rsync']
     command += config.get_default('rsync.args', [
         '--archive',

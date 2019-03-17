@@ -1,4 +1,6 @@
-from __future__ import print_function, absolute_import, division
+"""Drifter."""
+from __future__ import absolute_import, division, print_function
+
 import logging
 import sys
 
@@ -12,18 +14,20 @@ __version__ = '0.0.1'
 __author__ = 'Luke Kingsley'
 
 
-def run():
+def main():
+    """Start running drifter."""
     try:
-        main()
+        run()
     except KeyboardInterrupt as e:
         print()
     except DrifterException as e:
         message = getattr(e, 'msg', e.message)
-        click.secho('ERROR: %s' % (message), bold=True, fg='red')
+        click.secho('ERROR: {0}'.format(message), bold=True, fg='red')
         sys.exit(1)
 
 
-def main():
+def run():
+    """Run the drifter command."""
     config = Config()
     config.load_state()
 
@@ -44,7 +48,7 @@ def main():
         ctx.ensure_object(dict)
         ctx.obj['meta'] = {
             'version': __version__,
-            'author': __author__
+            'author': __author__,
         }
         ctx.obj['config'] = config
 
@@ -58,7 +62,7 @@ def main():
             help_ctx = ctx.command.make_context(
                 ctx.info_name,
                 ['help'],
-                help_option_names=ctx.help_option_names
+                help_option_names=ctx.help_option_names,
             )
             with help_ctx:
                 help_ctx.command.invoke(help_ctx)
@@ -111,9 +115,9 @@ def main():
             #         'name': 'default',
             #     },
             # }
-        }
+        },
     )
 
 
 if __name__ == '__main__':
-    run()
+    main()

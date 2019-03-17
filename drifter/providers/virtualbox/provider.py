@@ -1,28 +1,36 @@
+"""Provide interaction with the VirtualBox SDK."""
+from __future__ import absolute_import, division, print_function
 
-from __future__ import print_function, absolute_import, division
 import logging
 import os
 from time import sleep
-from xml.dom import minidom
+
+from defusedxml import minidom
 
 import vboxapi
 
-from drifter.exceptions import ProviderException, InvalidArgumentException
+from drifter.exceptions import InvalidArgumentException, ProviderException
 
 
 class VirtualBoxException(ProviderException):
+    """Exception to represent a VirtualBox error."""
+
     pass
 
 
 class Provider(object):
+    """Provide interaction with the VirtualBox SDK."""
+
     def __init__(self):
+        """Set up the VirtualBox connection."""
         self.manager = vboxapi.VirtualBoxManager(None, None)
         self.vbox = self.manager.getVirtualBox()
         self.session = self.manager.getSessionObject(self.vbox)
         self.machine = None
 
     def load_machine(self, name, silent=False):
-        logging.debug('Loading machine "%s"...' % (name))
+        """Load a machine for usage and make sure it's accessible."""
+        logging.debug('Loading machine "%s"...', (name))
         try:
             self.machine = self.vbox.findMachine(name)
         except Exception as e:
@@ -36,13 +44,14 @@ class Provider(object):
         logging.debug('Checking machine accessibility...')
         if not self.machine.accessible:
             raise VirtualBoxException(
-                'Machine is not accessible: %s' % (self.machine.accessError)
+                'Machine is not accessible: {0}'.format(self.machine.accessError),
             )
 
         logging.debug('Machine loaded.')
         return True
 
     def acquire_lock(self, write=False):
+        """Acquire the machine lock."""
         if write:
             logging.debug('Acquiring write lock...')
             self.machine.lockMachine(self.session, self.manager.constants.LockType_Write)
@@ -53,6 +62,7 @@ class Provider(object):
         logging.debug('Lock acquired.')
 
     def release_lock(self):
+        """Release the machine lock."""
         logging.debug('Releasing lock...')
 
         try:
@@ -67,6 +77,7 @@ class Provider(object):
         logging.debug('Lock released.')
 
     def is_running(self):
+        """Check if a machine is running."""
         logging.debug('Checking if machine is running...')
 
         if self.machine.state < self.manager.constants.MachineState_FirstOnline:
@@ -81,7 +92,8 @@ class Provider(object):
         return True
 
     def create(self, name, os_type):
-        logging.debug('Creating machine "%s"...' % (name))
+        """Create a machine and register it with VirtualBox."""
+        logging.debug('Creating machine "%s"...', (name))
 
         try:
             self.machine = self.vbox.createMachine('', name, [], os_type, '')
@@ -90,7 +102,7 @@ class Provider(object):
 
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to create machine: %s' % (message)
+                'Failed to create machine: {0}'.format(message),
             )
 
         logging.debug('Registering machine...')
@@ -102,19 +114,26 @@ class Provider(object):
             try:
                 progress = self.machine.deleteConfig([])
                 progress.waitForCompletion(-1)
-            except Exception:
-                pass
+            except Exception as _e:
+                message = getattr(_e, 'msg', e.message)
+                raise VirtualBoxException(
+                    'Failed to clean up registration: {0}'.format(message),
+                )
 
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to register machine: %s' % (message)
+                'Failed to register machine: {0}'.format(message),
             )
 
     def clone_from(self, disks):
+        """Clone a list of disks into the machine.
+
+        Disks should be a list of paths to valid VirtualBox disk files.
+        """
         logging.debug('Creating disk clones...')
 
-        portCount = len(disks)
-        storage = self._create_storage(portCount)
+        port_count = len(disks)
+        storage = self._create_storage(port_count)
 
         port = 0
         for disk in disks:
@@ -122,6 +141,7 @@ class Provider(object):
             port += 1
 
     def destroy(self):
+        """Destroy a machine."""
         logging.debug('Destroying machine...')
 
         self.stop()
@@ -129,12 +149,12 @@ class Provider(object):
         logging.debug('Unregistering machine...')
         try:
             mediums = self.machine.unregister(
-                self.manager.constants.CleanupMode_DetachAllReturnHardDisksOnly
+                self.manager.constants.CleanupMode_DetachAllReturnHardDisksOnly,
             )
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to unregister machine: %s' % (message)
+                'Failed to unregister machine: {0}'.format(message),
             )
         logging.debug('Machine unregistered.')
 
@@ -145,11 +165,12 @@ class Provider(object):
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to delete files for machine: %s' % (message)
+                'Failed to delete files for machine: {0}'.format(message),
             )
         logging.debug('Files deleted.')
 
     def start(self, head=False, memory=None, mac=None, ports=None):
+        """Start a machine."""
         logging.debug('Starting machine...')
         if self.is_running():
             return True
@@ -164,16 +185,17 @@ class Provider(object):
             progress = self.machine.launchVMProcess(
                 self.session,
                 'gui' if head else 'headless',
-                ''
+                '',
             )
             progress.waitForCompletion(-1)
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to start machine: %s' % (message))
+            raise VirtualBoxException('Failed to start machine: {0}'.format(message))
         finally:
             self.release_lock()
 
     def stop(self):
+        """Stop a machine."""
         logging.debug('Stopping machine...')
         if not self.is_running():
             return True
@@ -188,7 +210,7 @@ class Provider(object):
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to shutdown machine: %s' % (message)
+                'Failed to shutdown machine: {0}'.format(message),
             )
         finally:
             self.release_lock()
@@ -197,6 +219,7 @@ class Provider(object):
         return True
 
     def get_server_data(self):
+        """Get machine metadata and connection information."""
         logging.debug('Getting machine data...')
 
         server = {
@@ -225,14 +248,15 @@ class Provider(object):
 
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to get server data: %s' % (message))
+            raise VirtualBoxException('Failed to get server data: {0}'.format(message))
         finally:
             self.release_lock()
 
         return server
 
     def get_base_metadata(self, base):
-        logging.debug('Detecting settings for "%s"...' % (base))
+        """Read the XML file for a base machine and return the metadata."""
+        logging.debug('Detecting settings for "%s"...', (base))
 
         os_type = None
         media = []
@@ -252,13 +276,13 @@ class Provider(object):
 
         if not machine:
             raise VirtualBoxException(
-                'Unable to find settings for "%s".' % (base)
+                'Unable to find settings for "{0}".'.format(base),
             )
 
         os_type = machine.attributes.get('OSType', None)
         if not os_type:
             raise VirtualBoxException(
-                'Unable to determine "%s" OS type.' % (base)
+                'Unable to determine "{0}" OS type.'.format(base),
             )
 
         disks = machine.getElementsByTagName('HardDisk')
@@ -272,7 +296,7 @@ class Provider(object):
             'media': media,
         }
 
-    def _create_storage(self, portCount):
+    def _create_storage(self, port_count):
         logging.debug('Creating storage...')
 
         try:
@@ -280,16 +304,16 @@ class Provider(object):
 
             storage = self.session.machine.addStorageController(
                 'SATAController',
-                self.manager.constants.StorageBus_SATA
+                self.manager.constants.StorageBus_SATA,
             )
-            storage.portCount = portCount
+            storage.portCount = port_count
             storage.useHostIOCache = True
 
             self.session.machine.saveSettings()
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to create machine storage: %s' % (message)
+                'Unable to create machine storage: {0}'.format(message),
             )
         finally:
             self.release_lock()
@@ -298,7 +322,7 @@ class Provider(object):
 
     def _create_disk_clone(self, filename, storage, port):
         basename = os.path.basename(filename)
-        logging.debug('Cloning disk "%s"...' % (basename))
+        logging.debug('Cloning disk "%s"...', (basename))
 
         machine_dir = os.path.dirname(self.machine.settingsFilePath)
         medium_path = os.path.join(machine_dir, basename)
@@ -312,14 +336,14 @@ class Provider(object):
                 extension,
                 medium_path,
                 self.manager.constants.AccessMode_ReadWrite,
-                self.manager.constants.DeviceType_HardDisk
+                self.manager.constants.DeviceType_HardDisk,
             )
 
             parent = self.vbox.openMedium(
                 filename,
                 self.manager.constants.DeviceType_HardDisk,
                 self.manager.constants.AccessMode_ReadOnly,
-                False
+                False,
             )
 
             progress = parent.cloneToBase(medium, [self.manager.constants.MediumVariant_Standard])
@@ -330,18 +354,18 @@ class Provider(object):
                 port,
                 0,
                 self.manager.constants.DeviceType_HardDisk,
-                medium
+                medium,
             )
             self.session.machine.saveSettings()
         except Exception as e:
             logging.debug('Failed to clone disk.')
             if os.path.exists(medium_path):
-                logging.debug('Removing medium "%s"...' % (medium_path))
+                logging.debug('Removing medium "%s"...', (medium_path))
                 os.remove(medium_path)
 
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to create machine media: %s' % (message)
+                'Unable to create machine media: {0}'.format(message),
             )
         finally:
             self.release_lock()
@@ -364,7 +388,7 @@ class Provider(object):
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to set machine settings: %s' % (message)
+                'Unable to set machine settings: {0}'.format(message),
             )
         finally:
             self.release_lock()
@@ -374,12 +398,12 @@ class Provider(object):
         try:
             self.acquire_lock()
 
-            networkA = self.session.machine.getNetworkAdapter(0)
-            networkA.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
-            networkA.enabled = True
-            networkA.cableConnected = True
+            network = self.session.machine.getNetworkAdapter(0)
+            network.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
+            network.enabled = True
+            network.cableConnected = True
             if nat_mac:
-                networkA.MACAddress = nat_mac
+                network.MACAddress = nat_mac
 
             # TODO: vboxnet0 needs to be looked up, not assumed
             # networkB = self.session.machine.getNetworkAdapter(1)
@@ -393,7 +417,7 @@ class Provider(object):
         except Exception as e:
             message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to configure network: %s' % (message)
+                'Failed to configure network: {0}'.format(message),
             )
         finally:
             self.release_lock()
@@ -415,32 +439,32 @@ class Provider(object):
 
             for ports in port_list:
                 network.NATEngine.addRedirect(
-                    '%d:%d:%s' % (
+                    '{0}:{1}:{2}'.format(
                         ports['host'],
                         ports['guest'],
-                        ports['protocol']
+                        ports['protocol'],
                     ),
                     ports['protocol_id'],
                     '127.0.0.1',
                     ports['host'],
                     '',
-                    ports['guest']
+                    ports['guest'],
                 )
 
             self.session.machine.saveSettings()
         except Exception as e:
             message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to forward ports: %s' % (message))
+            raise VirtualBoxException('Failed to forward ports: {0}'.format(message))
         finally:
             self.release_lock()
 
     def _merge_ports(self, ports):
         return ','.join(
-            ['%s:%s:%s' % (
+            ['{0}:{1}:{2}'.format(
                 port['host'],
                 port['guest'],
-                port.get('protocol', 'tcp')
-            ) for port in ports]
+                port.get('protocol', 'tcp'),
+            ) for port in ports],
         )
 
     def _parse_ports(self, ports):
@@ -452,7 +476,7 @@ class Provider(object):
 
         allowed_protocols = {
             'tcp': self.manager.constants.NATProtocol_TCP,
-            'udp': self.manager.constants.NATProtocol_UDP
+            'udp': self.manager.constants.NATProtocol_UDP,
         }
 
         has_ssh = False
@@ -467,8 +491,8 @@ class Provider(object):
             count = len(pieces)
             if count > 3 or count < 2:
                 raise InvalidArgumentException(
-                    'Value "%s" is invalid. ' % (part) +
-                    'Expected <host-port>:<guest-port>[:<protocol>]'
+                    'Value "{0}" is invalid. '.format(part)
+                    + 'Expected <host-port>:<guest-port>[:<protocol>]',
                 )
 
             host_port = self._validate_port(pieces[0])
@@ -497,7 +521,7 @@ class Provider(object):
         return port_list
 
     def _validate_port(self, port):
-        error = 'Port "%s" is invalid; must be an integer 1-65535.' % (port)
+        error = 'Port "{0}" is invalid; must be an integer 1-65535.'.format(port)
 
         try:
             port = int(port)
@@ -513,10 +537,10 @@ class Provider(object):
         protocol = proto.lower()
         if protocol not in allowed:
             raise InvalidArgumentException(
-                'Protocol "%s" is invalid; must be one of ["%s"]' % (
+                'Protocol "{0}" is invalid; must be one of ["{1}"]'.format(
                     protocol,
-                    '", "'.join(allowed.keys())
-                )
+                    '", "'.join(allowed.keys()),
+                ),
             )
 
         return protocol
