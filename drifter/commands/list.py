@@ -25,7 +25,7 @@ def list_command(ctx, config, select, no_select):
     if select:
         _select(config, select, machines)
     elif no_select:
-        config.select_machine(None)
+        config.set_selected(None)
         config.save_state()
 
     click.echo('')
@@ -45,7 +45,7 @@ def list_command(ctx, config, select, no_select):
 def _select(config, machine, machines):
     # Select by name
     if config.has_machine(machine):
-        config.select_machine(machine)
+        config.set_selected(machine)
         config.save_state()
 
         return
@@ -58,7 +58,7 @@ def _select(config, machine, machines):
 
     index -= 1
     if 0 <= index < len(machines):
-        config.select_machine(machines[index])
+        config.set_selected(machines[index])
         config.save_state()
 
         return

@@ -177,6 +177,8 @@ def _destroy(provider, config, name, force):
     provider.destroy()
 
     config.remove_machine(name)
+    if config.get_selected() == name:
+        config.set_selected(None)
     config.save_state()
 
 

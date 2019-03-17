@@ -114,7 +114,7 @@ class Config(object):
 
         return provider_machines
 
-    def select_machine(self, name):
+    def set_selected(self, name):
         """Set the given machine as selected."""
         self.state['selected'] = name
 
