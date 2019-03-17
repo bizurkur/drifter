@@ -5,6 +5,7 @@ import click
 import drifter.commands
 from drifter.exceptions import InvalidArgumentException
 
+
 @click.command()
 @click.option('--select', help='Selects a machine')
 @click.option('--no-select', help='Selects no machines', is_flag=True)
@@ -34,11 +35,12 @@ def list(ctx, config, select, no_select):
         name = machines[i]
         provider = config.get_machine(machines[i]).get('provider', 'unknown')
         if name == selected:
-            click.secho('  * %d: %s (%s)' % (i+1, name, provider), bold=True)
+            click.secho('  * %d: %s (%s)' % (i + 1, name, provider), bold=True)
         else:
-            click.echo('    %d: %s (%s)' % (i+1, name, provider))
+            click.echo('    %d: %s (%s)' % (i + 1, name, provider))
 
     click.echo('')
+
 
 def _select(config, machine, machines):
     # Select by name

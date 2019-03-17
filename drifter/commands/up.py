@@ -6,6 +6,7 @@ import drifter.commands
 from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
+
 @click.command(context_settings={
     'ignore_unknown_options': True,
     'allow_extra_args': True
@@ -19,7 +20,7 @@ def up(ctx, config, name, provider):
 
     # Start the named machine only
     if name:
-        start_machine(ctx, config, name, provider)
+        _up(ctx, config, name, provider)
 
         return
 
@@ -38,9 +39,10 @@ def up(ctx, config, name, provider):
             machines.append(machine)
 
     for machine in machines:
-        start_machine(ctx, config, machine, provider)
+        _up(ctx, config, machine, provider)
 
-def start_machine(ctx, config, name, provider):
+
+def _up(ctx, config, name, provider):
     # Precedence: machine-specific, CLI override, config default, 'virtualbox'
     machine_provider = config.get_default('machines.%s.provider' % (name), provider)
     if not machine_provider:

@@ -9,6 +9,7 @@ from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 from drifter.utils import get_cli
 
+
 @click.command(context_settings={
     'ignore_unknown_options': True,
     'allow_extra_args': True
@@ -22,7 +23,7 @@ def rsync(ctx, config, name, command):
 
     # Rsync to the named machine only
     if name:
-        rsync_machine(ctx, config, name, command)
+        _rsync(ctx, config, name, command)
 
         return
 
@@ -32,14 +33,16 @@ def rsync(ctx, config, name, command):
 
     # Rsync to all machines
     for machine in machines:
-        rsync_machine(ctx, config, machine, command)
+        _rsync(ctx, config, machine, command)
 
-def rsync_machine(ctx, config, name, command):
+
+def _rsync(ctx, config, name, command):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
-def rsync_connect(config, servers, additional_args=[], command=None,
-        filelist=None, verbose=True, local_path=None, remote_path=None, **kwargs):
+
+def rsync_connect(config, servers, additional_args=[], command=None, filelist=None,
+                  verbose=True, local_path=None, remote_path=None, **kwargs):
     """Rsyncs files to the given servers via SSH."""
 
     local_path = _get_local_path(config, local_path)
@@ -78,6 +81,7 @@ def rsync_connect(config, servers, additional_args=[], command=None,
             filelist=filelist
         )
 
+
 def _get_base_command(config):
     """Gets the base rsync command."""
 
@@ -101,6 +105,7 @@ def _get_base_command(config):
 
     return command
 
+
 def _get_local_path(config, local_path=None):
     if not local_path:
         local_path = config.get_default('rsync.local', '/')
@@ -111,6 +116,7 @@ def _get_local_path(config, local_path=None):
     local_path = os.path.join(local_path.rstrip(os.sep), '')
 
     return local_path
+
 
 def _get_remote_path(config, remote_path=None):
     if not remote_path:

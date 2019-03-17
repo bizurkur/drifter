@@ -2,7 +2,6 @@
 from __future__ import print_function, absolute_import, division
 import logging
 import os
-import sys
 from time import sleep
 from xml.dom import minidom
 
@@ -10,8 +9,10 @@ import vboxapi
 
 from drifter.exceptions import ProviderException, InvalidArgumentException
 
+
 class VirtualBoxException(ProviderException):
     pass
+
 
 class Provider(object):
     def __init__(self):
@@ -56,7 +57,7 @@ class Provider(object):
 
         try:
             self.session.unlockMachine()
-        except Exception as e:
+        except Exception:
             logging.debug('Failed to release lock?')
             pass
 
@@ -101,7 +102,7 @@ class Provider(object):
             try:
                 progress = self.machine.deleteConfig([])
                 progress.waitForCompletion(-1)
-            except Exception as e_:
+            except Exception:
                 pass
 
             message = getattr(e, 'msg', e.message)
@@ -466,38 +467,14 @@ class Provider(object):
             count = len(pieces)
             if count > 3 or count < 2:
                 raise InvalidArgumentException(
-                    'Value "%s" is invalid. ' % (part)
-                        +'Expected <host-port>:<guest-port>[:<protocol>]'
+                    'Value "%s" is invalid. ' % (part) +
+                    'Expected <host-port>:<guest-port>[:<protocol>]'
                 )
 
-            error = 'Host port "%s" is invalid; must be a number 1-65535.' % (pieces[0])
-
-            try:
-                host_port = int(pieces[0])
-            except Exception as e:
-                raise InvalidArgumentException(error)
-
-            if 0 >= host_port or host_port > 65535:
-                raise InvalidArgumentException(error)
-
-            error = 'Guest port "%s" is invalid; must be a number 1-65535.' % (pieces[1])
-            try:
-                guest_port = int(pieces[1])
-            except Exception as e:
-                raise InvalidArgumentException(error)
-
-            if 0 >= guest_port or guest_port > 65535:
-                raise InvalidArgumentException(error)
-
+            host_port = self._validate_port(pieces[0])
+            guest_port = self._validate_port(pieces[1])
             if count >= 3:
-                protocol = pieces[2].lower()
-                if protocol not in allowed_protocols:
-                    raise InvalidArgumentException(
-                        'Protocol "%s" is invalid; must be one of ["%s"]' % (
-                            protocol,
-                            '", "'.join(allowed_protocols.keys())
-                        )
-                    )
+                protocol = self._validate_proto(pieces[2], allowed_protocols)
 
             if guest_port == 22:
                 has_ssh = True
@@ -518,6 +495,31 @@ class Provider(object):
             })
 
         return port_list
+
+    def _validate_port(self, port):
+        error = 'Port "%s" is invalid; must be an integer 1-65535.' % (port)
+
+        try:
+            port = int(port)
+        except Exception:
+            raise InvalidArgumentException(error)
+
+        if 0 >= port or port > 65535:
+            raise InvalidArgumentException(error)
+
+        return port
+
+    def _validate_proto(self, proto, allowed):
+        protocol = proto.lower()
+        if protocol not in allowed:
+            raise InvalidArgumentException(
+                'Protocol "%s" is invalid; must be one of ["%s"]' % (
+                    protocol,
+                    '", "'.join(allowed.keys())
+                )
+            )
+
+        return protocol
 
     def _get_collision_free_ports(self, port_list):
         for port in port_list:

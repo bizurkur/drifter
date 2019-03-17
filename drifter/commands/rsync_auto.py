@@ -14,6 +14,7 @@ import drifter.commands.ssh as base_ssh
 from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
+
 @click.command(context_settings={
     'ignore_unknown_options': True,
     'allow_extra_args': True
@@ -34,6 +35,7 @@ def rsync_auto(ctx, config, name, command):
 
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+
 
 class RsyncHandler(FileSystemEventHandler):
     """Class to handle rsync events."""
@@ -94,7 +96,7 @@ class RsyncHandler(FileSystemEventHandler):
             filelist = list(self.files.keys())
             self.files = {}
             base_rsync.rsync_connect(self.config, self.servers, filelist=filelist,
-                verbose=not has_command, **self.kwargs)
+                                     verbose=not has_command, **self.kwargs)
 
             if not has_command:
                 _show_monitoring_message(self.config)
@@ -123,15 +125,16 @@ class RsyncHandler(FileSystemEventHandler):
 
         return False
 
-def rsync_auto_connect(config, servers, additional_args=[], command=None,
-        run_once=False, burst_limit=0, verbose=True, local_path=None, remote_path=None):
+
+def rsync_auto_connect(config, servers, additional_args=[], command=None, run_once=False,
+                       burst_limit=0, verbose=True, local_path=None, remote_path=None):
 
     local_path = base_rsync._get_local_path(config, local_path)
     remote_path = base_rsync._get_remote_path(config, remote_path)
 
     click.secho('Doing an initial rsync...', bold=True)
     base_rsync.rsync_connect(config, servers, additional_args=additional_args,
-        verbose=verbose, local_path=local_path, remote_path=remote_path)
+                             verbose=verbose, local_path=local_path, remote_path=remote_path)
 
     if command and run_once:
         click.secho('Launching run-once command...', bold=True)
@@ -150,7 +153,8 @@ def rsync_auto_connect(config, servers, additional_args=[], command=None,
     _show_monitoring_message(config)
 
     handler = RsyncHandler(config, servers, additional_args=additional_args, command=command,
-        burst_limit=burst_limit, run_once=run_once, local_path=local_path, remote_path=remote_path)
+                           burst_limit=burst_limit, run_once=run_once,
+                           local_path=local_path, remote_path=remote_path)
     observer = Observer()
     observer.schedule(handler, path=local_path, recursive=True)
     observer.start()
@@ -162,6 +166,7 @@ def rsync_auto_connect(config, servers, additional_args=[], command=None,
         observer.stop()
 
     observer.join()
+
 
 def _show_monitoring_message(config):
     message = 'Monitoring files for changes'

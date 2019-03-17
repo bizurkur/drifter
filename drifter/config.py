@@ -10,6 +10,7 @@ import yaml
 
 from drifter.exceptions import GenericException, InvalidArgumentException
 
+
 class Config(object):
     def __init__(self, folder=None):
         self.state = {}
@@ -43,15 +44,14 @@ class Config(object):
         try:
             with io.open(path, 'r') as handle:
                 self.state = json.load(handle)
-        except IOError as e:
+        except IOError:
             click.secho(
-                'State file "%s" is not readable.' % (path)
-                    +' Check your file permissions.',
+                'State file "%s" is not readable. Check your file permissions.' % (path),
                 fg='red',
                 bold=True
             )
             sys.exit(1)
-        except ValueError as e:
+        except ValueError:
             click.secho(
                 'State file "%s" seems to have invalid data.' % (path),
                 fg='red',
@@ -158,10 +158,9 @@ class Config(object):
         try:
             with io.open(path, 'r') as handle:
                 self.defaults = yaml.safe_load(handle)
-        except IOError as e:
+        except IOError:
             raise GenericException(
-                'State file "%s" is not readable.' % (path)
-                    +' Check your file permissions.'
+                'State file "%s" is not readable. Check your file permissions.' % (path)
             )
 
     def _find_state_dir(self, path=None):

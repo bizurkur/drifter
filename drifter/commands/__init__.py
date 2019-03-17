@@ -5,13 +5,15 @@ import os
 
 import click
 
-from ..providers import get_providers
+from drifter.providers import get_providers
+
 
 def _get_name(ctx, param, value):
     if not value:
         return ctx.obj['config'].get_selected()
 
     return value
+
 
 name_argument = click.argument(
     'name',
@@ -41,8 +43,10 @@ command_option = click.option(
     help='Command to run after.'
 )
 
+
 def confirm_destroy(name, abort=True):
     return click.confirm('Are you sure you want to destroy the "%s" machine?' % (name), abort=abort)
+
 
 def pass_config(f):
     @click.pass_context
@@ -50,6 +54,7 @@ def pass_config(f):
         return ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
 
     return update_wrapper(new_func, f)
+
 
 def get_commands():
     all = []
@@ -60,6 +65,7 @@ def get_commands():
     all.sort()
 
     return all
+
 
 class CommandLoader(click.MultiCommand):
     def list_commands(self, ctx):

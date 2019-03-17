@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import, division
 import subprocess
 
+
 def get_cli(cmd, output=False, shell=False):
     command = cmd
     if isinstance(cmd, list):
@@ -15,7 +16,7 @@ def get_cli(cmd, output=False, shell=False):
         stdout=None if output else subprocess.PIPE,
         stderr=subprocess.STDOUT,
         close_fds=True
-        )
+    )
     result = process.communicate()
 
     response = None

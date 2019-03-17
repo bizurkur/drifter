@@ -8,6 +8,7 @@ from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 from drifter.utils import get_cli
 
+
 @click.command(context_settings={
     'ignore_unknown_options': True,
     'allow_extra_args': True
@@ -28,6 +29,7 @@ def ssh(ctx, config, name, command):
 
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+
 
 def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
     """Opens an SSH connection to the given server."""

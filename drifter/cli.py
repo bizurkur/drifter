@@ -1,6 +1,5 @@
 from __future__ import print_function, absolute_import, division
 import logging
-import os
 import sys
 
 import click
@@ -12,6 +11,7 @@ from drifter.exceptions import DrifterException
 __version__ = '0.0.1'
 __author__ = 'Luke Kingsley'
 
+
 def run():
     try:
         main()
@@ -21,6 +21,7 @@ def run():
         message = getattr(e, 'msg', e.message)
         click.secho('ERROR: %s' % (message), bold=True, fg='red')
         sys.exit(1)
+
 
 def main():
     config = Config()
@@ -112,6 +113,7 @@ def main():
             # }
         }
     )
+
 
 if __name__ == '__main__':
     run()
