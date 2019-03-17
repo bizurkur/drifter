@@ -41,7 +41,9 @@ $ sudo -E python setup.py install
 
 To use it:
 
-    $ drifter help
+```sh
+$ drifter help
+```
 
 More docs will be added as commands get completed.
 
