@@ -398,20 +398,18 @@ class Provider(object):
         try:
             self.acquire_lock()
 
-            network = self.session.machine.getNetworkAdapter(0)
-            network.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
-            network.enabled = True
-            network.cableConnected = True
+            network_a = self.session.machine.getNetworkAdapter(0)
+            network_a.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
+            network_a.enabled = True
+            network_a.cableConnected = True
             if nat_mac:
-                network.MACAddress = nat_mac
+                network_a.MACAddress = nat_mac
 
-            # TODO: vboxnet0 needs to be looked up, not assumed
-            # networkB = self.session.machine.getNetworkAdapter(1)
-            # networkB.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
-            # networkB.enabled = True
-            # networkB.cableConnected = True
-            # networkB.MACAddress =
-            # networkB.hostOnlyInterface = "vboxnet0"
+            network_b = self.session.machine.getNetworkAdapter(1)
+            network_b.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
+            network_b.enabled = True
+            network_b.cableConnected = True
+            network_b.hostOnlyInterface = 'vboxnet0'
 
             self.session.machine.saveSettings()
         except Exception as e:
@@ -552,5 +550,4 @@ class Provider(object):
         return port_list
 
     def _get_collision_free_port(self, port):
-        # TODO: Fix this.
         return port

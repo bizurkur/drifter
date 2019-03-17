@@ -122,7 +122,5 @@ def _get_remote_path(config, remote_path=None):
         if not remote_path:
             raise GenericException('No remote rsync path specified.')
 
-    # TODO: This assumes local and remote are same OS
-    remote_path = os.path.join(remote_path.rstrip(os.sep), '')
-
-    return remote_path
+    # This assumes local and remote are same OS
+    return os.path.join(remote_path.rstrip(os.sep), '')
