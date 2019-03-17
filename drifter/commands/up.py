@@ -15,7 +15,7 @@ from drifter.providers import invoke_provider_context
 @drifter.commands.pass_config
 @click.pass_context
 def up(ctx, config, name, provider):
-    """Brings up a machine or machines."""
+    """Brings up a machine."""
 
     # Start the named machine only
     if name:

@@ -258,7 +258,7 @@ def _rsync(ctx, provider, config, name, command):
 @drifter.providers.pass_provider
 @click.pass_context
 def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
-    """Automatically rsync files to a VirtualBox machine."""
+    """Automatically rsyncs files to a VirtualBox machine."""
 
     name = resolve_name(config, name)
     require_running_machine(config, name, provider)
