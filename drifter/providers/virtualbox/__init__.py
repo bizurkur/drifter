@@ -207,7 +207,6 @@ def _halt(provider, config, name):
     click.secho('Halting machine "{0}"...'.format(name), bold=True)
 
     provider.load_machine(name)
-    # TODO: This should probably try `sudo shutdown now`
     provider.stop()
 
 

@@ -72,50 +72,6 @@ def run():
         obj={'extra': extra},
         auto_envvar_prefix='DRIFTER',
         help_option_names=['-h', '--help'],
-        # TODO: This needs to move to a config
-        default_map={
-            # 'up': {
-            #     'name': 'default',
-            #     'provider': 'virtualbox',
-            # },
-            # 'destroy': {
-            #     'name': 'default',
-            # },
-            # 'halt': {
-            #     'name': 'default',
-            # },
-            # 'ssh': {
-            #     'name': 'default',
-            # },
-            # 'rsync': {
-            #     'name': 'default',
-            # },
-            # 'rsync-auto': {
-            #     'name': 'default',
-            # },
-            # 'virtualbox': {
-            #     'up': {
-            #         'name': 'default',
-            #         'base': '/Users/luke/VirtualBox VMs/ubuntu_bionic64/',
-            #         'memory': 1024,
-            #     },
-            #     'destroy': {
-            #         'name': 'default',
-            #     },
-            #     'halt': {
-            #         'name': 'default',
-            #     },
-            #     'ssh': {
-            #         'name': 'default',
-            #     },
-            #     'rsync': {
-            #         'name': 'default',
-            #     },
-            #     'rsync-auto': {
-            #         'name': 'default',
-            #     },
-            # }
-        },
     )
 
 
