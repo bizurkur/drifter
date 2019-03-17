@@ -1,5 +1,7 @@
 # Drifter
 
+[![Build Status](https://travis-ci.org/bizurkur/drifter.svg?branch=master)](https://travis-ci.org/bizurkur/drifter)
+
 Easy and dynamic machine creation.
 
 **This is a work in progress.** Drifter is very similar to the concept of [Vagrant](https://www.vagrantup.com/) - it builds machines from different providers on the fly and allows you to interact with them.
