@@ -10,35 +10,35 @@ import click
 from drifter.providers import get_providers
 
 
-def _get_name(ctx, param, value):
+def _get_name(ctx, unused_param, value):
     if not value:
         return ctx.obj['config'].get_selected()
 
     return value
 
 
-name_argument = click.argument(
+NAME_ARGUMENT = click.argument(
     'name',
     metavar='NAME',
     default='',
     callback=_get_name,
 )
 
-force_option = click.option(
+FORCE_OPTION = click.option(
     '--force',
     '-f',
     help='Do not prompt for confirmation.',
     is_flag=True,
 )
 
-provider_option = click.option(
+PROVIDER_OPTION = click.option(
     '--provider',
     metavar='PROVIDER',
     type=click.Choice(get_providers()),
     help='Which provider to use.',
 )
 
-command_option = click.option(
+COMMAND_OPTION = click.option(
     '--command',
     '-c',
     metavar='COMMAND',
@@ -51,13 +51,14 @@ def confirm_destroy(name, abort=True):
     return click.confirm('Are you sure you want to destroy the "{0}" machine?'.format(name), abort=abort)
 
 
-def pass_config(f):
+def pass_config(func):
     """Pass the config object to the command."""
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
-        return ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
+        """Invoke the function, adding the config argument."""
+        return ctx.invoke(func, ctx.obj['config'], *args, **kwargs)
 
-    return update_wrapper(new_func, f)
+    return update_wrapper(new_func, func)
 
 
 def get_commands():
@@ -79,11 +80,11 @@ class CommandLoader(click.MultiCommand):
         """Display available commands."""
         return get_commands() + get_providers()
 
-    def get_command(self, ctx, name):
+    def get_command(self, ctx, cmd_name):
         """Get a command to execute."""
-        ns = {}
+        namespace = {}
 
-        cmd = name.replace('-', '_')
+        cmd = cmd_name.replace('-', '_')
 
         folder = os.path.dirname(__file__)
         filename = os.path.join(folder, cmd + '.py')
@@ -92,16 +93,17 @@ class CommandLoader(click.MultiCommand):
             if not os.path.exists(filename):
                 return None
 
-        with open(filename) as f:
-            code = compile(f.read(), filename, 'exec')
-            eval(code, ns, ns)
+        with open(filename) as handle:
+            code = compile(handle.read(), filename, 'exec')
+            # pylint: disable=eval-used
+            eval(code, namespace, namespace)
 
-        if cmd in ns:
-            return ns[cmd]
+        if cmd in namespace:
+            return namespace[cmd]
 
         cmd = cmd + '_command'
-        if cmd in ns:
-            return ns[cmd]
+        if cmd in namespace:
+            return namespace[cmd]
 
         return None
 

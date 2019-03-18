@@ -15,8 +15,8 @@ from drifter.utils import get_cli
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @drifter.commands.pass_config
 @click.pass_context
 def ssh(ctx, config, name, command):
@@ -32,9 +32,11 @@ def ssh(ctx, config, name, command):
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
-def ssh_connect(config, servers, additional_args=[], command=None, filelist=None, verbose=True):
+def ssh_connect(config, servers, additional_args=None, command=None, filelist=None, verbose=True):
     """Open an SSH connection to the given server."""
-    base_command = ['ssh'] + additional_args
+    base_command = ['ssh']
+    if additional_args and isinstance(additional_args, list):
+        base_command += additional_args
 
     default_username = config.get_default('ssh.username', 'drifter')
 

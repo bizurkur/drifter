@@ -9,13 +9,14 @@ import click
 from drifter.exceptions import ProviderException
 
 
-def pass_provider(f):
+def pass_provider(func):
     """Pass the provider object into a command."""
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
-        return ctx.invoke(f, ctx.obj['provider'], *args, **kwargs)
+        """Invoke the function, adding the provider argument."""
+        return ctx.invoke(func, ctx.obj['provider'], *args, **kwargs)
 
-    return update_wrapper(new_func, f)
+    return update_wrapper(new_func, func)
 
 
 def get_providers():
@@ -39,7 +40,7 @@ def get_provider(provider):
         module = __import__('drifter.providers.{0}'.format(provider), fromlist=['drifter.providers'])
     except ImportError as e:
         raise ProviderException(
-            'Provider "%s" is invalid: {0}'.format(provider, e.message),
+            'Provider "{0}" is invalid: {1}'.format(provider, e.message),
         )
 
     cmd = getattr(module, provider, None)

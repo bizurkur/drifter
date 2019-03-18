@@ -7,6 +7,7 @@ from time import sleep
 
 from defusedxml import minidom
 
+# pylint: disable=import-error
 import vboxapi
 
 from drifter.exceptions import InvalidArgumentException, ProviderException
@@ -69,7 +70,6 @@ class Provider(object):
             self.session.unlockMachine()
         except Exception:
             logging.debug('Failed to release lock?')
-            pass
 
         # Give it a moment to release the lock
         sleep(.5)
@@ -173,7 +173,7 @@ class Provider(object):
         """Start a machine."""
         logging.debug('Starting machine...')
         if self.is_running():
-            return True
+            return
 
         if self.machine.state != self.manager.constants.MachineState_Saved:
             self._set_boot(memory)
@@ -242,7 +242,7 @@ class Provider(object):
                     'guest_name': parts[4],
                     'guest_port': parts[5],
                 })
-                if '22' == parts[5]:
+                if parts[5] == '22':
                     server['ssh_host'] = parts[2]
                     server['ssh_port'] = parts[3]
 
@@ -420,8 +420,8 @@ class Provider(object):
         finally:
             self.release_lock()
 
-    def _forward_ports(self, ports):
-        orig_list = self._parse_ports(ports)
+    def _forward_ports(self, port_string):
+        orig_list = self._parse_ports(port_string)
         port_list = self._get_collision_free_ports(orig_list)
 
         logging.debug('Forwarding ports...')
@@ -526,7 +526,7 @@ class Provider(object):
         except Exception:
             raise InvalidArgumentException(error)
 
-        if 0 >= port or port > 65535:
+        if port <= 0 or port > 65535:
             raise InvalidArgumentException(error)
 
         return port

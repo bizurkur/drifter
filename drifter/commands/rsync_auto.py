@@ -22,8 +22,8 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @drifter.commands.pass_config
 @click.pass_context
 def rsync_auto(ctx, config, name, command):
@@ -128,11 +128,11 @@ class RsyncHandler(FileSystemEventHandler):
         return False
 
 
-def rsync_auto_connect(config, servers, additional_args=[], command=None, run_once=False,
+def rsync_auto_connect(config, servers, additional_args=None, command=None, run_once=False,
                        burst_limit=0, verbose=True, local_path=None, remote_path=None):
     """Launch rsync-auto for providers."""
-    local_path = base_rsync._get_local_path(config, local_path)
-    remote_path = base_rsync._get_remote_path(config, remote_path)
+    local_path = base_rsync.get_local_path(config, local_path)
+    remote_path = base_rsync.get_remote_path(config, remote_path)
 
     click.secho('Doing an initial rsync...', bold=True)
     base_rsync.rsync_connect(config, servers, additional_args=additional_args,
