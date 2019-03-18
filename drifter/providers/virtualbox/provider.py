@@ -405,11 +405,11 @@ class Provider(object):
             if nat_mac:
                 network_a.MACAddress = nat_mac
 
-            network_b = self.session.machine.getNetworkAdapter(1)
-            network_b.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
-            network_b.enabled = True
-            network_b.cableConnected = True
-            network_b.hostOnlyInterface = 'vboxnet0'
+            # network_b = self.session.machine.getNetworkAdapter(1)
+            # network_b.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
+            # network_b.enabled = True
+            # network_b.cableConnected = True
+            # network_b.hostOnlyInterface = 'vboxnet0'
 
             self.session.machine.saveSettings()
         except Exception as e:

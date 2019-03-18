@@ -24,6 +24,6 @@ setup(
 
     entry_points='''
         [console_scripts]
-        drifter=drifter.cli:run
+        drifter=drifter.cli:main
     '''
 )
