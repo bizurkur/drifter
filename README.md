@@ -1,6 +1,7 @@
 # Drifter
 
 [![Build Status](https://travis-ci.org/bizurkur/drifter.svg?branch=master)](https://travis-ci.org/bizurkur/drifter)
+![pylint Score](https://mperlet.github.io/pybadge/badges/10.svg)
 
 Easy and dynamic machine creation.
 
