@@ -12,7 +12,7 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.name_argument
+@drifter.commands.NAME_ARGUMENT
 @drifter.commands.pass_config
 @click.pass_context
 def halt(ctx, config, name):

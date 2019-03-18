@@ -25,8 +25,8 @@ def virtualbox(ctx):
         click.echo(ctx.get_help())
 
 
-@virtualbox.command()
-@drifter.commands.name_argument
+@virtualbox.command(name='up')
+@drifter.commands.NAME_ARGUMENT
 @click.option('--base', help='Machine to use as the base.')
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
@@ -34,11 +34,11 @@ def virtualbox(ctx):
 @click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def up(provider, config, name, base, memory, head, mac, ports):
+def up_command(provider, config, name, base, memory, head, mac, ports):
     """Bring up a VirtualBox machine."""
     # Start the named machine only
     if name:
-        _up(provider, config, name, base, memory, head, mac, ports)
+        _up_command(provider, config, name, base, memory, head, mac, ports)
 
         return
 
@@ -59,17 +59,17 @@ def up(provider, config, name, base, memory, head, mac, ports):
     for machine in machines:
         if machine in provider_machines:
             continue
-        if 'virtualbox' == config.get_machine_default(machine, 'provider', 'virtualbox'):
+        if config.get_machine_default(machine, 'provider', 'virtualbox') == 'virtualbox':
             provider_machines.append(machine)
 
     if not provider_machines:
         raise GenericException('No machines available.')
 
     for machine in provider_machines:
-        _up(provider, config, machine, base, memory, head, mac, ports)
+        _up_command(provider, config, machine, base, memory, head, mac, ports)
 
 
-def _up(provider, config, name, base, memory, head, mac, ports):
+def _up_command(provider, config, name, base, memory, head, mac, ports):
     base, _head, _memory, _mac, _ports = _resolve_up_args(config, name, base,
                                                           memory, head, mac, ports)
 
@@ -146,8 +146,8 @@ def _resolve_up_args(config, name, base, head, memory, mac, ports):
 
 
 @virtualbox.command()
-@drifter.commands.name_argument
-@drifter.commands.force_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.FORCE_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def destroy(provider, config, name, force):
@@ -183,7 +183,7 @@ def _destroy(provider, config, name, force):
 
 
 @virtualbox.command()
-@drifter.commands.name_argument
+@drifter.commands.NAME_ARGUMENT
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def halt(provider, config, name):
@@ -211,8 +211,8 @@ def _halt(provider, config, name):
 
 
 @virtualbox.command()
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
@@ -228,8 +228,8 @@ def ssh(ctx, provider, config, name, command):
 
 
 @virtualbox.command()
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
@@ -260,8 +260,8 @@ def _rsync(ctx, provider, config, name, command):
 
 
 @virtualbox.command()
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @click.option('--run-once', help='Run command only once.', is_flag=True)
 @click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
 @drifter.commands.pass_config

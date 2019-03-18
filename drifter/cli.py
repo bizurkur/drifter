@@ -45,6 +45,7 @@ def run():
     @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')
     @click.pass_context
     def cli(ctx, debug):
+        """Command line interface entry point."""
         ctx.ensure_object(dict)
         ctx.obj['meta'] = {
             'version': __version__,
@@ -67,6 +68,7 @@ def run():
             with help_ctx:
                 help_ctx.command.invoke(help_ctx)
 
+    # pylint: disable=unexpected-keyword-arg, no-value-for-parameter
     cli(
         args=args,
         obj={'extra': extra},

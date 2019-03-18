@@ -199,7 +199,9 @@ class Config(object):
 
         parent = os.path.dirname(path)
         if parent and parent != path:
-            return self._find_state_dir(parent)
+            self._find_state_dir(parent)
+
+            return
 
         self._init_state()
 

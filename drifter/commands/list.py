@@ -11,8 +11,7 @@ from drifter.exceptions import InvalidArgumentException
 @click.option('--select', help='Selects a machine')
 @click.option('--no-select', help='Selects no machines', is_flag=True)
 @drifter.commands.pass_config
-@click.pass_context
-def list_command(ctx, config, select, no_select):
+def list_command(config, select, no_select):
     """List available machines."""
     machines = config.list_machines()
     machines.sort()

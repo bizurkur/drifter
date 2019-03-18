@@ -12,8 +12,8 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.name_argument
-@drifter.commands.force_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.FORCE_OPTION
 @drifter.commands.pass_config
 @click.pass_context
 def destroy(ctx, config, name, force):

@@ -16,8 +16,8 @@ from drifter.utils import get_cli
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.name_argument
-@drifter.commands.command_option
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.COMMAND_OPTION
 @drifter.commands.pass_config
 @click.pass_context
 def rsync(ctx, config, name, command):
@@ -42,11 +42,11 @@ def _rsync(ctx, config, name, command):
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
-def rsync_connect(config, servers, additional_args=[], command=None, filelist=None,
-                  verbose=True, local_path=None, remote_path=None, **kwargs):
+def rsync_connect(config, servers, additional_args=None, command=None, filelist=None,
+                  verbose=True, local_path=None, remote_path=None):
     """Rsync files to the given servers via SSH."""
-    local_path = _get_local_path(config, local_path)
-    remote_path = _get_remote_path(config, remote_path)
+    local_path = get_local_path(config, local_path)
+    remote_path = get_remote_path(config, remote_path)
 
     base_command = _get_base_command(config)
     default_username = config.get_default('ssh.username', 'drifter')
@@ -60,7 +60,10 @@ def rsync_connect(config, servers, additional_args=[], command=None, filelist=No
         ssh_params += ' -i "{0}"'.format(private_key)
 
     for server in servers:
-        this_command = base_command[:] + additional_args + [
+        this_command = base_command[:]
+        if additional_args and isinstance(additional_args, list):
+            this_command += additional_args
+        this_command += [
             '-e',
             'ssh -p {0}{1}'.format(server['ssh_port'], ssh_params),
             local_path,
@@ -74,7 +77,7 @@ def rsync_connect(config, servers, additional_args=[], command=None, filelist=No
         get_cli(this_command, verbose)
 
     if command:
-        return base_ssh.ssh_connect(
+        base_ssh.ssh_connect(
             config,
             servers,
             command=command,
@@ -104,7 +107,8 @@ def _get_base_command(config):
     return command
 
 
-def _get_local_path(config, local_path=None):
+def get_local_path(config, local_path=None):
+    """Get the absolute local path."""
     if not local_path:
         local_path = config.get_default('rsync.local', '/')
 
@@ -116,7 +120,8 @@ def _get_local_path(config, local_path=None):
     return local_path
 
 
-def _get_remote_path(config, remote_path=None):
+def get_remote_path(config, remote_path=None):
+    """Get the remote path."""
     if not remote_path:
         remote_path = config.get_default('rsync.remote', None)
         if not remote_path:
