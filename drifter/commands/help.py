@@ -24,3 +24,4 @@ def help_command(ctx):
 Drifter {0} by {1}
 """.format(ctx.obj['meta']['version'], ctx.obj['meta']['author']))
     click.echo(ctx.parent.get_help())
+    click.echo('')
