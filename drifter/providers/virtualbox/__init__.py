@@ -6,6 +6,7 @@ import os
 import click
 
 import drifter.commands
+import drifter.commands.provision as provision_base
 import drifter.commands.rsync as rsync_base
 import drifter.commands.rsync_auto as rsync_auto_base
 import drifter.commands.ssh as ssh_base
@@ -143,6 +144,40 @@ def _resolve_up_args(config, name, base, head, memory, mac, ports):
         _ports = config.get_machine_default(name, 'network.nat.ports')
 
     return (base, _head, _memory, _mac, _ports)
+
+
+@virtualbox.command()
+@drifter.commands.NAME_ARGUMENT
+@drifter.commands.QUIET_OPTION
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+def provision(provider, config, name, quiet):
+    """Provision a VirtualBox machine."""
+    if name:
+        _provision(provider, config, name, quiet)
+
+        return
+
+    machines = config.list_machines('virtualbox')
+    if not machines:
+        raise GenericException('No machines available.')
+
+    for machine in machines:
+        _provision(provider, config, machine, quiet)
+
+
+def _provision(provider, config, name, quiet):
+    _require_machine(config, name)
+
+    if not quiet:
+        click.secho('Provisioning machine "{0}"...'.format(name), bold=True)
+
+    provider.load_machine(name)
+
+    server = provider.get_server_data()
+    provisioners = config.get_machine_default(name, 'provision', [])
+
+    provision_base.do_provision(config, [server], provisioners, verbose=not quiet)
 
 
 @virtualbox.command()

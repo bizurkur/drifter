@@ -43,12 +43,13 @@ def _rsync(ctx, config, name, command):
 
 
 def rsync_connect(config, servers, additional_args=None, command=None, filelist=None,
-                  verbose=True, local_path=None, remote_path=None):
+                  verbose=True, local_path=None, remote_path=None, **kwargs):
     """Rsync files to the given servers via SSH."""
     local_path = get_local_path(config, local_path)
-    remote_path = get_remote_path(config, remote_path)
+    if remote_path is None:
+        remote_path = get_remote_path(config, remote_path)
 
-    base_command = _get_base_command(config)
+    base_command = _get_base_command(config, **kwargs)
     default_username = config.get_default('ssh.username', 'drifter')
 
     ssh_params = ''
@@ -85,22 +86,29 @@ def rsync_connect(config, servers, additional_args=None, command=None, filelist=
         )
 
 
-def _get_base_command(config):
+def _get_base_command(config, **kwargs):
     command = ['rsync', '--rsync-path', 'sudo rsync']
-    command += config.get_default('rsync.args', [
-        '--archive',
-        '--compress',
-        '--delete',
-        '--verbose',
-        '--no-owner',
-        '--no-group',
-    ])
+    rsync_args = kwargs.get('rsync_args', None)
+    if rsync_args is None:
+        rsync_args = config.get_default('rsync.args', [
+            '--archive',
+            '--compress',
+            '--delete',
+            '--verbose',
+            '--no-owner',
+            '--no-group',
+        ])
+    command += rsync_args
 
-    include_list = config.get_default('rsync.include', [])
+    include_list = kwargs.get('rsync_include', None)
+    if include_list is None:
+        include_list = config.get_default('rsync.include', [])
     for include in include_list:
         command += ['--include', include]
 
-    exclude_list = config.get_default('rsync.exclude', [])
+    exclude_list = kwargs.get('rsync_exclude', None)
+    if exclude_list is None:
+        exclude_list = config.get_default('rsync.exclude', [])
     for exclude in exclude_list:
         command += ['--exclude', exclude]
 
@@ -115,9 +123,7 @@ def get_local_path(config, local_path=None):
     if not local_path.startswith(config.base_dir):
         local_path = os.path.join(config.base_dir, local_path.strip(os.sep), '')
 
-    local_path = os.path.join(local_path.rstrip(os.sep), '')
-
-    return local_path
+    return os.path.join(local_path, '')
 
 
 def get_remote_path(config, remote_path=None):
@@ -128,4 +134,4 @@ def get_remote_path(config, remote_path=None):
             raise GenericException('No remote rsync path specified.')
 
     # This assumes local and remote are same OS
-    return os.path.join(remote_path.rstrip(os.sep), '')
+    return os.path.join(remote_path, '')

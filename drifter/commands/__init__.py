@@ -31,6 +31,13 @@ FORCE_OPTION = click.option(
     is_flag=True,
 )
 
+QUIET_OPTION = click.option(
+    '--quiet',
+    '-q',
+    help='Do not display output.',
+    is_flag=True,
+)
+
 PROVIDER_OPTION = click.option(
     '--provider',
     metavar='PROVIDER',
