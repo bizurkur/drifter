@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from time import sleep
 
 import click
 
@@ -29,6 +30,7 @@ def virtualbox(ctx):
 @virtualbox.command(name='up')
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.QUIET_OPTION
+@drifter.commands.PROVISION_OPTION
 @click.option('--base', help='Machine to use as the base.')
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
@@ -36,11 +38,11 @@ def virtualbox(ctx):
 @click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def up_command(provider, config, name, quiet, base, memory, head, mac, ports):
+def up_command(provider, config, name, quiet, provision, base, memory, head, mac, ports):
     """Bring up a VirtualBox machine."""
     # Start the named machine only
     if name:
-        _up_command(provider, config, name, quiet, base, memory, head, mac, ports)
+        _up_command(provider, config, name, quiet, provision, base, memory, head, mac, ports)
 
         return
 
@@ -68,10 +70,10 @@ def up_command(provider, config, name, quiet, base, memory, head, mac, ports):
         raise GenericException('No machines available.')
 
     for machine in provider_machines:
-        _up_command(provider, config, machine, quiet, base, memory, head, mac, ports)
+        _up_command(provider, config, machine, quiet, provision, base, memory, head, mac, ports)
 
 
-def _up_command(provider, config, name, quiet, base, memory, head, mac, ports):
+def _up_command(provider, config, name, quiet, provision, base, memory, head, mac, ports):
     base, _head, _memory, _mac, _ports = _resolve_up_args(config, name, base,
                                                           memory, head, mac, ports)
 
@@ -100,6 +102,33 @@ def _up_command(provider, config, name, quiet, base, memory, head, mac, ports):
     if not quiet:
         click.secho('==> Starting machine...')
     provider.start(head, memory, mac, ports)
+
+    _do_up_provision(provider, config, name, provision, quiet)
+
+
+def _do_up_provision(provider, config, name, provision, quiet):
+    """Execute provision, if applicable."""
+    # Do not provision
+    if provision is False:
+        return
+
+    # Already provisioned
+    settings = config.get_machine(name)
+    if settings.get('provisioned', False) and not provision:
+        click.secho('==> Skipping provision because it already ran.')
+        click.secho('==> Use the --provision flag to force a provision or use `drifter provision`')
+        return
+
+    # Do provision
+    server = provider.get_server_data()
+    while True:
+        click.secho('==> Checking if SSH connection is alive...')
+        res = base_ssh.do_ssh(config, [server], command='cd .', verbose=False)
+        if res and res[0][1] == 0:
+            break
+        sleep(1)
+
+    _provision(provider, config, name, quiet)
 
 
 def _ensure_machine_exists(provider, config, name, quiet, base, head, memory, mac, ports):
@@ -158,12 +187,12 @@ def _resolve_up_args(config, name, base, head, memory, mac, ports):
     return (base, _head, _memory, _mac, _ports)
 
 
-@virtualbox.command()
+@virtualbox.command(name='provision')
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def provision(provider, config, name, quiet):
+def provision_command(provider, config, name, quiet):
     """Provision a VirtualBox machine."""
     if name:
         _provision(provider, config, name, quiet)
@@ -190,6 +219,9 @@ def _provision(provider, config, name, quiet):
     provisioners = config.get_machine_default(name, 'provision', [])
 
     base_provision.do_provision(config, [server], provisioners, verbose=not quiet)
+
+    config.get_machine(name)['provisioned'] = True
+    config.save_state()
 
 
 @virtualbox.command()
