@@ -6,10 +6,10 @@ import os
 import click
 
 import drifter.commands
-import drifter.commands.provision as provision_base
-import drifter.commands.rsync as rsync_base
-import drifter.commands.rsync_auto as rsync_auto_base
-import drifter.commands.ssh as ssh_base
+import drifter.commands.provision as base_provision
+import drifter.commands.rsync as base_rsync
+import drifter.commands.rsync_auto as base_rsync_auto
+import drifter.commands.ssh as base_ssh
 import drifter.providers
 from drifter.exceptions import GenericException
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
@@ -78,28 +78,7 @@ def _up_command(provider, config, name, quiet, base, memory, head, mac, ports):
     if not quiet:
         click.secho('Bringing up machine "{0}"...'.format(name), bold=True)
 
-    # Create it if it doesn't exist
-    if not provider.load_machine(name, True):
-        if not quiet:
-            click.secho('==> Importing base machine "{0}"...'.format(base))
-        metadata = provider.get_base_metadata(base)
-        provider.create(name, metadata['os'])
-
-        config.add_machine(name, {
-            'provider': 'virtualbox',
-            'id': provider.machine.id,
-            'headless': not _head,
-            'memory': _memory,
-            'network': {
-                'nat': {
-                    'mac': _mac,
-                    'ports': _ports,
-                },
-            },
-        })
-        config.save_state()
-
-        provider.clone_from(metadata['media'])
+    _ensure_machine_exists(provider, config, name, quiet, base, _head, _memory, _mac, _ports)
 
     try:
         settings = config.get_machine(name)
@@ -121,6 +100,35 @@ def _up_command(provider, config, name, quiet, base, memory, head, mac, ports):
     if not quiet:
         click.secho('==> Starting machine...')
     provider.start(head, memory, mac, ports)
+
+
+def _ensure_machine_exists(provider, config, name, quiet, base, head, memory, mac, ports):
+    """Create a machine, if it doesn't already exist."""
+    if provider.load_machine(name, True):
+        return
+
+    # Create it if it doesn't exist
+    if not quiet:
+        click.secho('==> Importing base machine "{0}"...'.format(base))
+
+    metadata = provider.get_base_metadata(base)
+    provider.create(name, metadata['os'])
+
+    config.add_machine(name, {
+        'provider': 'virtualbox',
+        'id': provider.machine.id,
+        'headless': not head,
+        'memory': memory,
+        'network': {
+            'nat': {
+                'mac': mac,
+                'ports': ports,
+            },
+        },
+    })
+    config.save_state()
+
+    provider.clone_from(metadata['media'])
 
 
 def _resolve_up_args(config, name, base, head, memory, mac, ports):
@@ -181,7 +189,7 @@ def _provision(provider, config, name, quiet):
     server = provider.get_server_data()
     provisioners = config.get_machine_default(name, 'provision', [])
 
-    provision_base.do_provision(config, [server], provisioners, verbose=not quiet)
+    base_provision.do_provision(config, [server], provisioners, verbose=not quiet)
 
 
 @virtualbox.command()
@@ -267,7 +275,7 @@ def ssh(ctx, provider, config, name, command, quiet):
 
     server = provider.get_server_data()
 
-    ssh_base.do_ssh(config, [server], command=command, verbose=not quiet,
+    base_ssh.do_ssh(config, [server], command=command, verbose=not quiet,
                     additional_args=ctx.obj['extra'])
 
 
@@ -301,7 +309,7 @@ def _rsync(ctx, provider, config, name, command, quiet):
     if not quiet:
         click.secho('Rsyncing to machine "{0}"...'.format(name), bold=True)
 
-    rsync_base.do_rsync(config, [server], command=command, verbose=not quiet,
+    base_rsync.do_rsync(config, [server], command=command, verbose=not quiet,
                         additional_args=ctx.obj['extra'])
 
 
@@ -321,10 +329,10 @@ def rsync_auto(ctx, provider, config, name, command, quiet, run_once, burst_limi
 
     server = provider.get_server_data()
 
-    rsync_auto_base.rsync_auto_connect(config, [server], command=command,
-                                       additional_args=ctx.obj['extra'],
-                                       run_once=run_once, burst_limit=burst_limit,
-                                       verbose=not quiet)
+    base_rsync_auto.do_rsync_auto(config, [server], command=command,
+                                  additional_args=ctx.obj['extra'],
+                                  run_once=run_once, burst_limit=burst_limit,
+                                  verbose=not quiet)
 
 
 def _resolve_name(config, name):

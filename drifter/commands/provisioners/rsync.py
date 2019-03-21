@@ -1,7 +1,7 @@
 """Provision a machine using rsync."""
 from __future__ import absolute_import, division, print_function
 
-import drifter.commands.rsync as rsync_base
+import drifter.commands.rsync as base_rsync
 
 
 def run(config, servers, provisioner, verbose=True):
@@ -12,7 +12,7 @@ def run(config, servers, provisioner, verbose=True):
     include = provisioner.get('include', None)
     args = provisioner.get('args', None)
 
-    rsync_base.do_rsync(config, servers, verbose=verbose,
+    base_rsync.do_rsync(config, servers, verbose=verbose,
                         local_path=local_path, remote_path=remote_path,
                         rsync_exclude=exclude, rsync_include=include,
                         rsync_args=args)

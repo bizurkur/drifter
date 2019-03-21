@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import re
 
-import drifter.commands.ssh as ssh_base
+import drifter.commands.ssh as base_ssh
 from drifter.exceptions import GenericException
 
 
@@ -33,4 +33,4 @@ def run(config, servers, provisioner, verbose=True):
             re.sub(r'\'', '\'"\'"\'', command),
         )
 
-    ssh_base.do_ssh(config, servers, command=command, verbose=verbose)
+    base_ssh.do_ssh(config, servers, command=command, verbose=verbose)

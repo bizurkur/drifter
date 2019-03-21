@@ -87,17 +87,7 @@ class RsyncHandler(FileSystemEventHandler):
         if self.kwargs['command'] or self.kwargs['run_once']:
             has_command = True
 
-        burst_mode = False
-        if not has_command:
-            if self.kwargs['verbose']:
-                click.secho('Rsyncing folder: {0} => {1}'.format(local_path, remote_path), bold=True)
-        elif self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
-            if self.kwargs['verbose']:
-                click.secho('Burst limit exceeded; ignoring rsync', bold=True)
-            self.files = {}
-            burst_mode = True
-
-        if not burst_mode:
+        if not self._is_burst(has_command, local_path, remote_path):
             filelist = list(self.files.keys())
             self.files = {}
             kwargs = self.kwargs.copy()
@@ -111,6 +101,21 @@ class RsyncHandler(FileSystemEventHandler):
         self.semaphore.release()
 
         return True
+
+    def _is_burst(self, has_command, local_path, remote_path):
+        if not has_command:
+            if self.kwargs['verbose']:
+                click.secho('Rsyncing folder: {0} => {1}'.format(local_path, remote_path), bold=True)
+
+            return False
+
+        if self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
+            if self.kwargs['verbose']:
+                click.secho('Burst limit exceeded; ignoring rsync', bold=True)
+            self.files = {}
+            return True
+
+        return False
 
     def _build_list(self, source):
         patterns = []
@@ -133,8 +138,8 @@ class RsyncHandler(FileSystemEventHandler):
         return False
 
 
-def rsync_auto_connect(config, servers, additional_args=None, command=None, run_once=False,
-                       burst_limit=0, verbose=True, local_path=None, remote_path=None):
+def do_rsync_auto(config, servers, additional_args=None, command=None, run_once=False,
+                  burst_limit=0, verbose=True, local_path=None, remote_path=None):
     """Launch rsync-auto for providers."""
     local_path = base_rsync.get_local_path(config, local_path)
     remote_path = base_rsync.get_remote_path(config, remote_path)
