@@ -32,7 +32,7 @@ def ssh(ctx, config, name, command):
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
-def ssh_connect(config, servers, additional_args=None, command=None, filelist=None, verbose=True):
+def do_ssh(config, servers, additional_args=None, command=None, filelist=None, verbose=True):
     """Open an SSH connection to the given server."""
     base_command = ['ssh']
     if additional_args and isinstance(additional_args, list):

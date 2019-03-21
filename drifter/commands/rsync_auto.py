@@ -97,8 +97,8 @@ class RsyncHandler(FileSystemEventHandler):
         if not burst_mode:
             filelist = list(self.files.keys())
             self.files = {}
-            base_rsync.rsync_connect(self.config, self.servers, filelist=filelist,
-                                     verbose=not has_command, **self.kwargs)
+            base_rsync.do_rsync(self.config, self.servers, filelist=filelist,
+                                verbose=not has_command, **self.kwargs)
 
             if not has_command:
                 _show_monitoring_message(self.config)
@@ -135,15 +135,15 @@ def rsync_auto_connect(config, servers, additional_args=None, command=None, run_
     remote_path = base_rsync.get_remote_path(config, remote_path)
 
     click.secho('Doing an initial rsync...', bold=True)
-    base_rsync.rsync_connect(config, servers, additional_args=additional_args,
-                             verbose=verbose, local_path=local_path, remote_path=remote_path)
+    base_rsync.do_rsync(config, servers, additional_args=additional_args,
+                        verbose=verbose, local_path=local_path, remote_path=remote_path)
 
     if command and run_once:
         click.secho('Launching run-once command...', bold=True)
 
         for server in servers:
             Thread(
-                target=base_ssh.ssh_connect,
+                target=base_ssh.do_ssh,
                 args=(config, [server]),
                 kwargs={
                     'command': command,

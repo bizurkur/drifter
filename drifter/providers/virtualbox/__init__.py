@@ -258,8 +258,8 @@ def ssh(ctx, provider, config, name, command):
 
     server = provider.get_server_data()
 
-    ssh_base.ssh_connect(config, [server], command=command,
-                         additional_args=ctx.obj['extra'])
+    ssh_base.do_ssh(config, [server], command=command,
+                    additional_args=ctx.obj['extra'])
 
 
 @virtualbox.command()
@@ -290,8 +290,8 @@ def _rsync(ctx, provider, config, name, command):
 
     click.secho('Rsyncing to machine "{0}"...'.format(name), bold=True)
 
-    rsync_base.rsync_connect(config, [server], command=command,
-                             additional_args=ctx.obj['extra'])
+    rsync_base.do_rsync(config, [server], command=command,
+                        additional_args=ctx.obj['extra'])
 
 
 @virtualbox.command()

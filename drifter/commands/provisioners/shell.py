@@ -33,4 +33,4 @@ def run(config, servers, provisioner, verbose=True):
             re.sub(r'\'', '\'"\'"\'', command),
         )
 
-    ssh_base.ssh_connect(config, servers, command=command, verbose=verbose)
+    ssh_base.do_ssh(config, servers, command=command, verbose=verbose)

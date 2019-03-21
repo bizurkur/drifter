@@ -42,8 +42,8 @@ def _rsync(ctx, config, name, command):
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
-def rsync_connect(config, servers, additional_args=None, command=None, filelist=None,
-                  verbose=True, local_path=None, remote_path=None, **kwargs):
+def do_rsync(config, servers, additional_args=None, command=None, filelist=None,
+             verbose=True, local_path=None, remote_path=None, **kwargs):
     """Rsync files to the given servers via SSH."""
     local_path = get_local_path(config, local_path)
     if remote_path is None:
@@ -78,12 +78,7 @@ def rsync_connect(config, servers, additional_args=None, command=None, filelist=
         get_cli(this_command, verbose)
 
     if command:
-        base_ssh.ssh_connect(
-            config,
-            servers,
-            command=command,
-            filelist=filelist,
-        )
+        base_ssh.do_ssh(config, servers, command=command, filelist=filelist)
 
 
 def _get_base_command(config, **kwargs):
