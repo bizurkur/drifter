@@ -14,13 +14,14 @@ from drifter.providers import invoke_provider_context
 })
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.PROVIDER_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def up_command(ctx, config, name, provider):
+def up_command(ctx, config, name, provider, quiet):
     """Bring up a machine."""
     # Start the named machine only
     if name:
-        _up_command(ctx, config, name, provider)
+        _up_command(ctx, config, name, provider, quiet)
 
         return
 
@@ -39,10 +40,10 @@ def up_command(ctx, config, name, provider):
             machines.append(machine)
 
     for machine in machines:
-        _up_command(ctx, config, machine, provider)
+        _up_command(ctx, config, machine, provider, quiet)
 
 
-def _up_command(ctx, config, name, provider):
+def _up_command(ctx, config, name, provider, quiet):
     # Precedence: machine-specific, CLI override, config default, 'virtualbox'
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
@@ -62,4 +63,4 @@ def _up_command(ctx, config, name, provider):
                 ),
             )
 
-    invoke_provider_context(ctx, machine_provider, [name] + ctx.args)
+    invoke_provider_context(ctx, machine_provider, [name] + (['--quiet'] if quiet else []) + ctx.args)

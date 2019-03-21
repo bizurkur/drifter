@@ -17,9 +17,10 @@ from drifter.utils import get_cli
 })
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def ssh(ctx, config, name, command):
+def ssh(ctx, config, name, command, quiet):
     """Open a Secure Shell to a machine."""
     if not name:
         machines = config.list_machines()
@@ -29,7 +30,7 @@ def ssh(ctx, config, name, command):
             raise GenericException('No machines available.')
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
 
 
 def do_ssh(config, servers, additional_args=None, command=None, filelist=None, verbose=True):

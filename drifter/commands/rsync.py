@@ -18,13 +18,14 @@ from drifter.utils import get_cli
 })
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def rsync(ctx, config, name, command):
+def rsync(ctx, config, name, command, quiet):
     """Rsync files to a machine."""
     # Rsync to the named machine only
     if name:
-        _rsync(ctx, config, name, command)
+        _rsync(ctx, config, name, command, quiet)
 
         return
 
@@ -34,12 +35,12 @@ def rsync(ctx, config, name, command):
 
     # Rsync to all machines
     for machine in machines:
-        _rsync(ctx, config, machine, command)
+        _rsync(ctx, config, machine, command, quiet)
 
 
-def _rsync(ctx, config, name, command):
+def _rsync(ctx, config, name, command, quiet):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
 
 
 def do_rsync(config, servers, additional_args=None, command=None, filelist=None,

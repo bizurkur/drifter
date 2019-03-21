@@ -28,6 +28,7 @@ def virtualbox(ctx):
 
 @virtualbox.command(name='up')
 @drifter.commands.NAME_ARGUMENT
+@drifter.commands.QUIET_OPTION
 @click.option('--base', help='Machine to use as the base.')
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
@@ -35,11 +36,11 @@ def virtualbox(ctx):
 @click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def up_command(provider, config, name, base, memory, head, mac, ports):
+def up_command(provider, config, name, quiet, base, memory, head, mac, ports):
     """Bring up a VirtualBox machine."""
     # Start the named machine only
     if name:
-        _up_command(provider, config, name, base, memory, head, mac, ports)
+        _up_command(provider, config, name, quiet, base, memory, head, mac, ports)
 
         return
 
@@ -67,18 +68,20 @@ def up_command(provider, config, name, base, memory, head, mac, ports):
         raise GenericException('No machines available.')
 
     for machine in provider_machines:
-        _up_command(provider, config, machine, base, memory, head, mac, ports)
+        _up_command(provider, config, machine, quiet, base, memory, head, mac, ports)
 
 
-def _up_command(provider, config, name, base, memory, head, mac, ports):
+def _up_command(provider, config, name, quiet, base, memory, head, mac, ports):
     base, _head, _memory, _mac, _ports = _resolve_up_args(config, name, base,
                                                           memory, head, mac, ports)
 
-    click.secho('Bringing up machine "{0}"...'.format(name), bold=True)
+    if not quiet:
+        click.secho('Bringing up machine "{0}"...'.format(name), bold=True)
 
     # Create it if it doesn't exist
     if not provider.load_machine(name, True):
-        click.secho('==> Importing base machine "{0}"...'.format(base))
+        if not quiet:
+            click.secho('==> Importing base machine "{0}"...'.format(base))
         metadata = provider.get_base_metadata(base)
         provider.create(name, metadata['os'])
 
@@ -115,7 +118,8 @@ def _up_command(provider, config, name, base, memory, head, mac, ports):
     if not ports:
         ports = settings.get('network', {}).get('nat', {}).get('ports', _ports)
 
-    click.secho('==> Starting machine...')
+    if not quiet:
+        click.secho('==> Starting machine...')
     provider.start(head, memory, mac, ports)
 
 
@@ -183,12 +187,13 @@ def _provision(provider, config, name, quiet):
 @virtualbox.command()
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.FORCE_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def destroy(provider, config, name, force):
+def destroy(provider, config, name, force, quiet):
     """Destroy a VirtualBox machine."""
     if name:
-        _destroy(provider, config, name, force)
+        _destroy(provider, config, name, force, quiet)
 
         return
 
@@ -197,16 +202,17 @@ def destroy(provider, config, name, force):
         raise GenericException('No machines available.')
 
     for machine in machines:
-        _destroy(provider, config, machine, force)
+        _destroy(provider, config, machine, force, quiet)
 
 
-def _destroy(provider, config, name, force):
+def _destroy(provider, config, name, force, quiet):
     _require_machine(config, name)
 
     if not force and not drifter.commands.confirm_destroy(name, False):
         return
 
-    click.secho('Destroying machine "{0}"...'.format(name), bold=True)
+    if not quiet:
+        click.secho('Destroying machine "{0}"...'.format(name), bold=True)
 
     provider.load_machine(name)
     provider.destroy()
@@ -219,12 +225,13 @@ def _destroy(provider, config, name, force):
 
 @virtualbox.command()
 @drifter.commands.NAME_ARGUMENT
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def halt(provider, config, name):
+def halt(provider, config, name, quiet):
     """Halt a VirtualBox machine."""
     if name:
-        _halt(provider, config, name)
+        _halt(provider, config, name, quiet)
 
         return
 
@@ -233,13 +240,14 @@ def halt(provider, config, name):
         raise GenericException('No machines available.')
 
     for machine in machines:
-        _halt(provider, config, machine)
+        _halt(provider, config, machine, quiet)
 
 
-def _halt(provider, config, name):
+def _halt(provider, config, name, quiet):
     _require_machine(config, name)
 
-    click.secho('Halting machine "{0}"...'.format(name), bold=True)
+    if not quiet:
+        click.secho('Halting machine "{0}"...'.format(name), bold=True)
 
     provider.load_machine(name)
     provider.stop()
@@ -248,30 +256,32 @@ def _halt(provider, config, name):
 @virtualbox.command()
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
-def ssh(ctx, provider, config, name, command):
+def ssh(ctx, provider, config, name, command, quiet):
     """Open a Secure Shell to a VirtualBox machine."""
     name = _resolve_name(config, name)
     _require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    ssh_base.do_ssh(config, [server], command=command,
+    ssh_base.do_ssh(config, [server], command=command, verbose=not quiet,
                     additional_args=ctx.obj['extra'])
 
 
 @virtualbox.command()
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
-def rsync(ctx, provider, config, name, command):
+def rsync(ctx, provider, config, name, command, quiet):
     """Rsync files to a VirtualBox machine."""
     if name:
-        _rsync(ctx, provider, config, name, command)
+        _rsync(ctx, provider, config, name, command, quiet)
 
         return
 
@@ -280,29 +290,31 @@ def rsync(ctx, provider, config, name, command):
         raise GenericException('No machines available.')
 
     for machine in machines:
-        _rsync(ctx, provider, config, machine, command)
+        _rsync(ctx, provider, config, machine, command, quiet)
 
 
-def _rsync(ctx, provider, config, name, command):
+def _rsync(ctx, provider, config, name, command, quiet):
     _require_running_machine(config, name, provider)
 
     server = provider.get_server_data()
 
-    click.secho('Rsyncing to machine "{0}"...'.format(name), bold=True)
+    if not quiet:
+        click.secho('Rsyncing to machine "{0}"...'.format(name), bold=True)
 
-    rsync_base.do_rsync(config, [server], command=command,
+    rsync_base.do_rsync(config, [server], command=command, verbose=not quiet,
                         additional_args=ctx.obj['extra'])
 
 
 @virtualbox.command()
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @click.option('--run-once', help='Run command only once.', is_flag=True)
 @click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
-def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
+def rsync_auto(ctx, provider, config, name, command, quiet, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
     name = _resolve_name(config, name)
     _require_running_machine(config, name, provider)
@@ -311,7 +323,8 @@ def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
 
     rsync_auto_base.rsync_auto_connect(config, [server], command=command,
                                        additional_args=ctx.obj['extra'],
-                                       run_once=run_once, burst_limit=burst_limit)
+                                       run_once=run_once, burst_limit=burst_limit,
+                                       verbose=not quiet)
 
 
 def _resolve_name(config, name):

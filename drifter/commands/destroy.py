@@ -14,13 +14,14 @@ from drifter.providers import invoke_provider_context
 })
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.FORCE_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def destroy(ctx, config, name, force):
+def destroy(ctx, config, name, force, quiet):
     """Destroy a machine."""
     # Destroy the named machine only
     if name:
-        _destroy(ctx, config, name, force)
+        _destroy(ctx, config, name, force, quiet)
 
         return
 
@@ -30,12 +31,12 @@ def destroy(ctx, config, name, force):
 
     # Destroy all machines
     for machine in machines:
-        _destroy(ctx, config, machine, force)
+        _destroy(ctx, config, machine, force, quiet)
 
 
-def _destroy(ctx, config, name, force):
+def _destroy(ctx, config, name, force, quiet):
     if not force and not drifter.commands.confirm_destroy(name, False):
         return
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + ['--force'] + ctx.args)
+    invoke_provider_context(ctx, provider, [name] + ['--force'] + (['--quiet'] if quiet else []) + ctx.args)
