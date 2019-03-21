@@ -10,7 +10,7 @@ from drifter.commands import CommandLoader
 from drifter.config import Config
 from drifter.exceptions import DrifterException
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __author__ = 'Luke Kingsley'
 
 

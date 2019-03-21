@@ -31,6 +31,20 @@ FORCE_OPTION = click.option(
     is_flag=True,
 )
 
+QUIET_OPTION = click.option(
+    '--quiet',
+    '-q',
+    help='Do not display output.',
+    is_flag=True,
+)
+
+PROVISION_OPTION = click.option(
+    '--provision/--no-provision',
+    help='Whether or not to provision the machine.',
+    is_flag=True,
+    default=None,
+)
+
 PROVIDER_OPTION = click.option(
     '--provider',
     metavar='PROVIDER',

@@ -13,13 +13,14 @@ from drifter.providers import invoke_provider_context
     'allow_extra_args': True,
 })
 @drifter.commands.NAME_ARGUMENT
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def halt(ctx, config, name):
+def halt(ctx, config, name, quiet):
     """Halt a machine."""
     # Halt the named machine only
     if name:
-        _halt(ctx, config, name)
+        _halt(ctx, config, name, quiet)
 
         return
 
@@ -29,9 +30,9 @@ def halt(ctx, config, name):
 
     # Halt all machines
     for machine in machines:
-        _halt(ctx, config, machine)
+        _halt(ctx, config, machine, quiet)
 
 
-def _halt(ctx, config, name):
+def _halt(ctx, config, name, quiet):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + ctx.args)
+    invoke_provider_context(ctx, provider, [name] + (['--quiet'] if quiet else []) + ctx.args)

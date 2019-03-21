@@ -18,13 +18,14 @@ from drifter.utils import get_cli
 })
 @drifter.commands.NAME_ARGUMENT
 @drifter.commands.COMMAND_OPTION
+@drifter.commands.QUIET_OPTION
 @drifter.commands.pass_config
 @click.pass_context
-def rsync(ctx, config, name, command):
+def rsync(ctx, config, name, command, quiet):
     """Rsync files to a machine."""
     # Rsync to the named machine only
     if name:
-        _rsync(ctx, config, name, command)
+        _rsync(ctx, config, name, command, quiet)
 
         return
 
@@ -34,21 +35,22 @@ def rsync(ctx, config, name, command):
 
     # Rsync to all machines
     for machine in machines:
-        _rsync(ctx, config, machine, command)
+        _rsync(ctx, config, machine, command, quiet)
 
 
-def _rsync(ctx, config, name, command):
+def _rsync(ctx, config, name, command, quiet):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
 
 
-def rsync_connect(config, servers, additional_args=None, command=None, filelist=None,
-                  verbose=True, local_path=None, remote_path=None):
+def do_rsync(config, servers, additional_args=None, command=None, filelist=None,
+             verbose=True, local_path=None, remote_path=None, **kwargs):
     """Rsync files to the given servers via SSH."""
     local_path = get_local_path(config, local_path)
-    remote_path = get_remote_path(config, remote_path)
+    if remote_path is None:
+        remote_path = get_remote_path(config, remote_path)
 
-    base_command = _get_base_command(config)
+    base_command = _get_base_command(config, **kwargs)
     default_username = config.get_default('ssh.username', 'drifter')
 
     ssh_params = ''
@@ -77,30 +79,32 @@ def rsync_connect(config, servers, additional_args=None, command=None, filelist=
         get_cli(this_command, verbose)
 
     if command:
-        base_ssh.ssh_connect(
-            config,
-            servers,
-            command=command,
-            filelist=filelist,
-        )
+        base_ssh.do_ssh(config, servers, command=command, filelist=filelist)
 
 
-def _get_base_command(config):
+def _get_base_command(config, **kwargs):
     command = ['rsync', '--rsync-path', 'sudo rsync']
-    command += config.get_default('rsync.args', [
-        '--archive',
-        '--compress',
-        '--delete',
-        '--verbose',
-        '--no-owner',
-        '--no-group',
-    ])
+    rsync_args = kwargs.get('rsync_args', None)
+    if rsync_args is None:
+        rsync_args = config.get_default('rsync.args', [
+            '--archive',
+            '--compress',
+            '--delete',
+            '--verbose',
+            '--no-owner',
+            '--no-group',
+        ])
+    command += rsync_args
 
-    include_list = config.get_default('rsync.include', [])
+    include_list = kwargs.get('rsync_include', None)
+    if include_list is None:
+        include_list = config.get_default('rsync.include', [])
     for include in include_list:
         command += ['--include', include]
 
-    exclude_list = config.get_default('rsync.exclude', [])
+    exclude_list = kwargs.get('rsync_exclude', None)
+    if exclude_list is None:
+        exclude_list = config.get_default('rsync.exclude', [])
     for exclude in exclude_list:
         command += ['--exclude', exclude]
 
@@ -115,9 +119,7 @@ def get_local_path(config, local_path=None):
     if not local_path.startswith(config.base_dir):
         local_path = os.path.join(config.base_dir, local_path.strip(os.sep), '')
 
-    local_path = os.path.join(local_path.rstrip(os.sep), '')
-
-    return local_path
+    return os.path.join(local_path, '')
 
 
 def get_remote_path(config, remote_path=None):
@@ -128,4 +130,4 @@ def get_remote_path(config, remote_path=None):
             raise GenericException('No remote rsync path specified.')
 
     # This assumes local and remote are same OS
-    return os.path.join(remote_path.rstrip(os.sep), '')
+    return os.path.join(remote_path, '')
