@@ -12,7 +12,7 @@ import drifter.commands.rsync as base_rsync
 import drifter.commands.rsync_auto as base_rsync_auto
 import drifter.commands.ssh as base_ssh
 import drifter.providers
-from drifter.exceptions import GenericException
+from drifter.exceptions import GenericException, ProviderException
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
 
@@ -80,7 +80,11 @@ def _up_command(provider, config, name, quiet, provision, base, memory, head, ma
     if not quiet:
         click.secho('Bringing up machine "{0}"...'.format(name), bold=True)
 
-    _ensure_machine_exists(provider, config, name, quiet, base, _head, _memory, _mac, _ports)
+    try:
+        _ensure_machine_exists(provider, config, name, quiet, base, _head, _memory, _mac, _ports)
+    except ProviderException as e:
+        _destroy(provider, config, name, True, True)
+        raise e
 
     try:
         settings = config.get_machine(name)
