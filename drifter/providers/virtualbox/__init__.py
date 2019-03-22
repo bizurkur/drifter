@@ -254,8 +254,8 @@ def _destroy(provider, config, name, force, quiet):
     if not quiet:
         click.secho('Destroying machine "{0}"...'.format(name), bold=True)
 
-    provider.load_machine(name)
-    provider.destroy()
+    if provider.load_machine(name, True):
+        provider.destroy()
 
     config.remove_machine(name)
     if config.get_selected() == name:
