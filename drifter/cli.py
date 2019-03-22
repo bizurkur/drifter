@@ -45,7 +45,7 @@ def run():
     @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')
     @click.pass_context
     def cli(ctx, debug):
-        """Command line interface entry point."""
+        """Create development machines with ease."""
         ctx.ensure_object(dict)
         ctx.obj['meta'] = {
             'version': __version__,
