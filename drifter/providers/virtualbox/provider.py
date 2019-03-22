@@ -252,6 +252,9 @@ class Provider(object):
         finally:
             self.release_lock()
 
+        if not server.get('ssh_port', None):
+            raise ProviderException('Machine has no SSH port defined.')
+
         return server
 
     def get_base_metadata(self, base):
@@ -290,6 +293,9 @@ class Provider(object):
             loc = disk.attributes.get('location', None)
             if loc:
                 media.append(os.path.join(base, loc.value))
+
+        if not media:
+            raise ProviderException('Base machine has no disks.')
 
         return {
             'os': os_type.value,
@@ -544,10 +550,35 @@ class Provider(object):
         return protocol
 
     def _get_collision_free_ports(self, port_list):
+        """Ensure all ports won't conflict with other machines."""
         for port in port_list:
             port['host'] = self._get_collision_free_port(port['host'])
 
         return port_list
 
     def _get_collision_free_port(self, port):
+        """Get a port number that won't conflict with other machines."""
+        used_ports = []
+
+        machines = self.vbox.getMachines()
+        for machine in machines:
+            if machine.id == self.machine.id:
+                # Ignore self
+                continue
+
+            network = machine.getNetworkAdapter(0)
+            redirects = network.NATEngine.getRedirects()
+            for redirect in redirects:
+                parts = redirect.split(',')
+                if len(parts) < 5:
+                    continue
+                try:
+                    used_ports.append(int(parts[3]))
+                except Exception:
+                    pass
+
+        while port in used_ports:
+            logging.debug('Port {0} is in use. Trying {1}...'.format(port, port + 1))
+            port += 1
+
         return port
