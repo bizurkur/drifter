@@ -1,6 +1,7 @@
 """Automatically rsync files to a machine."""
 from __future__ import absolute_import, division, print_function
 
+import logging
 import os
 from fnmatch import fnmatch
 from threading import BoundedSemaphore, Thread
@@ -14,7 +15,6 @@ from watchdog.observers import Observer
 import drifter.commands
 import drifter.commands.rsync as base_rsync
 import drifter.commands.ssh as base_ssh
-from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
 
@@ -22,22 +22,19 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.NAME_ARGUMENT
-@drifter.commands.COMMAND_OPTION
-@drifter.commands.QUIET_OPTION
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
-def rsync_auto(ctx, config, name, command, quiet):
+def rsync_auto(ctx, config, name, command):
     """Automatically rsync files to a machine."""
     if not name:
-        machines = config.list_machines()
-        if machines:
-            name = machines.pop()
-        if not name:
-            raise GenericException('No machines available.')
+        machines = drifter.commands.list_machines(config)
+        name = machines.pop()
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
 class RsyncHandler(FileSystemEventHandler):
@@ -91,11 +88,13 @@ class RsyncHandler(FileSystemEventHandler):
             filelist = list(self.files.keys())
             self.files = {}
             kwargs = self.kwargs.copy()
-            if kwargs['verbose']:
-                kwargs['verbose'] = not has_command
+            if has_command:
+                if kwargs['verbose']:
+                    kwargs['ssh_verbose'] = True
+                kwargs['verbose'] = False
             base_rsync.do_rsync(self.config, self.servers, filelist=filelist, **kwargs)
 
-            if not has_command and self.kwargs['verbose']:
+            if not has_command:
                 _show_monitoring_message(self.config)
 
         self.semaphore.release()
@@ -103,17 +102,17 @@ class RsyncHandler(FileSystemEventHandler):
         return True
 
     def _is_burst(self, has_command, local_path, remote_path):
-        if not has_command:
-            if self.kwargs['verbose']:
-                click.secho('Rsyncing folder: {0} => {1}'.format(local_path, remote_path), bold=True)
-
-            return False
-
         if self.kwargs['burst_limit'] > 1 and len(self.files) >= self.kwargs['burst_limit']:
-            if self.kwargs['verbose']:
-                click.secho('Burst limit exceeded; ignoring rsync', bold=True)
+            logging.info(click.style('Burst limit exceeded; ignoring rsync', bold=True))
             self.files = {}
             return True
+
+        if not has_command:
+            logging.info(
+                click.style('Rsyncing folder: %s => %s', bold=True),
+                local_path,
+                remote_path,
+            )
 
         return False
 
@@ -144,14 +143,12 @@ def do_rsync_auto(config, servers, additional_args=None, command=None, run_once=
     local_path = base_rsync.get_local_path(config, local_path)
     remote_path = base_rsync.get_remote_path(config, remote_path)
 
-    if verbose:
-        click.secho('Doing an initial rsync...', bold=True)
+    logging.info(click.style('Doing an initial rsync...', bold=True))
     base_rsync.do_rsync(config, servers, additional_args=additional_args,
                         verbose=verbose, local_path=local_path, remote_path=remote_path)
 
     if command and run_once:
-        if verbose:
-            click.secho('Launching run-once command...', bold=True)
+        logging.info(click.style('Launching run-once command...', bold=True))
 
         for server in servers:
             Thread(
@@ -165,8 +162,7 @@ def do_rsync_auto(config, servers, additional_args=None, command=None, run_once=
 
         command = None
 
-    if verbose:
-        _show_monitoring_message(config)
+    _show_monitoring_message(config)
 
     handler = RsyncHandler(config, servers, additional_args=additional_args, command=command,
                            burst_limit=burst_limit, run_once=run_once, verbose=verbose,
@@ -199,4 +195,4 @@ def _show_monitoring_message(config):
             '", "'.join(exclude_list),
         )
 
-    click.secho(message, bold=True)
+    logging.info(click.style(message, bold=True))

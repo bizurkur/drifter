@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import io
 import json
+import logging
 import os
 import sys
 
@@ -50,22 +51,28 @@ class Config(object):
             with io.open(path, 'r') as handle:
                 self.state = json.load(handle)
         except IOError:
-            click.secho(
-                'State file "{0}" is not readable. Check your file permissions.'.format(path),
-                fg='red',
-                bold=True,
+            logging.error(
+                click.style(
+                    'State file "%s" is not readable. Check your file permissions.',
+                    bold=True,
+                    fg='red',
+                ),
+                path,
             )
             sys.exit(1)
         except ValueError:
-            click.secho(
-                'State file "{0}" seems to have invalid data.'.format(path),
-                fg='red',
-                bold=True,
+            logging.error(
+                click.style(
+                    'State file "%s" seems to have invalid data.',
+                    bold=True,
+                    fg='red',
+                ),
+                path,
             )
             if click.confirm('Would you like to reset it?'):
                 self._reset_state()
             else:
-                click.echo('Aborted!')
+                logging.info('Aborted!')
                 sys.exit(1)
 
     def save_state(self):

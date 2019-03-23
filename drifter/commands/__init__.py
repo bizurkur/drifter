@@ -2,7 +2,9 @@
 from __future__ import absolute_import, division, print_function
 
 import difflib
+import logging
 import os
+import sys
 from functools import update_wrapper
 
 import click
@@ -10,54 +12,96 @@ import click
 from drifter.providers import get_providers
 
 
-def _get_name(ctx, unused_param, value):
-    if not value:
-        return ctx.obj['config'].get_selected()
+def no_machine_warning():
+    """Warn that no machines exist and die."""
+    logging.warning(
+        click.style(
+            'No machines available. Run `drifter up` to create one.',
+            bold=True,
+            fg='yellow',
+        ),
+    )
+    sys.exit(1)
 
-    return value
+
+def list_machines(config, provider=None):
+    """List available machines and die if none found."""
+    machines = config.list_machines(provider)
+    if machines:
+        return machines
+
+    return no_machine_warning()
 
 
-NAME_ARGUMENT = click.argument(
-    'name',
-    metavar='NAME',
-    default='',
-    callback=_get_name,
-)
+def name_argument(func):
+    """Add a machine name argument."""
+    def _callback(ctx, unused_param, value):
+        if not value:
+            return ctx.obj['config'].get_selected()
+        return value
 
-FORCE_OPTION = click.option(
-    '--force',
-    '-f',
-    help='Do not prompt for confirmation.',
-    is_flag=True,
-)
+    return click.argument('name', metavar='NAME', default='', callback=_callback)(func)
 
-QUIET_OPTION = click.option(
-    '--quiet',
-    '-q',
-    help='Do not display output.',
-    is_flag=True,
-)
 
-PROVISION_OPTION = click.option(
-    '--provision/--no-provision',
-    help='Whether or not to provision the machine.',
-    is_flag=True,
-    default=None,
-)
+def verbosity_options(func):
+    """Add verbosity and quiet options."""
+    func = quiet_option(func)
+    func = verbosity_option(func)
+    return func
 
-PROVIDER_OPTION = click.option(
-    '--provider',
-    metavar='PROVIDER',
-    type=click.Choice(get_providers()),
-    help='Which provider to use.',
-)
 
-COMMAND_OPTION = click.option(
-    '--command',
-    '-c',
-    metavar='COMMAND',
-    help='Command to run after.',
-)
+def verbosity_option(func):
+    """Add a verbosity option."""
+    def _callback(ctx, unused_param, value):
+        _set_verbosity(ctx, value)
+        return value
+
+    return click.option('-v', '--verbose', count=True,
+                        expose_value=False, help='Increases verbosity.',
+                        callback=_callback)(func)
+
+
+def quiet_option(func):
+    """Add a quiet option."""
+    def _callback(ctx, unused_param, value):
+        _set_verbosity(ctx, -value)
+        return value
+
+    return click.option('-q', '--quiet', count=True,
+                        expose_value=False, help='Decreases verbosity.',
+                        callback=_callback)(func)
+
+
+def _set_verbosity(ctx, value):
+    ctx.ensure_object(dict)
+    ctx.obj['verbosity'] += value
+    level = 20 - (ctx.obj['verbosity'] * 10)
+    ctx.obj['log_level'] = level
+    logging.getLogger().setLevel(level)
+
+
+def force_option(func):
+    """Add a force option."""
+    return click.option('-f', '--force', help='Do not prompt for confirmation.', is_flag=True)(func)
+
+
+def provision_option(func):
+    """Add a provision option."""
+    return click.option('--provision/--no-provision',
+                        help='Whether or not to provision the machine.',
+                        is_flag=True, default=None)(func)
+
+
+def provider_option(func):
+    """Add a provider option."""
+    return click.option('--provider', metavar='PROVIDER', help='Which provider to use.',
+                        type=click.Choice(get_providers()),
+                        default=os.environ.get('DRIFTER_PROVIDER'))(func)
+
+
+def command_option(func):
+    """Add a command option."""
+    return click.option('-c', '--command', metavar='COMMAND', help='Command to run after.')(func)
 
 
 def confirm_destroy(name, abort=True):

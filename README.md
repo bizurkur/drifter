@@ -88,7 +88,11 @@ The `--force` option allows you to bypass the confirmation prompt and go straigh
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ## `halt` Command
@@ -105,7 +109,11 @@ The `name` argument specifies the name of the machine to halt.
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ## `help` Command
@@ -131,6 +139,14 @@ You can also set a default machine by setting an environmental variable, e.g. `e
 
 The `--no-select` option unsets the selected machine. However, it will not unset the `DRIFTER_NAME` environmental variable.
 
+#### `--quiet`, `-q`
+
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
+
 
 ## `provision` Command
 
@@ -146,7 +162,11 @@ The `name` argument specifies the name of the machine to provision.
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 ### Provisioners
 
@@ -180,7 +200,11 @@ The `--command` option allows you to execute a command remotely after the rsync 
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ## `rsync-auto` Command
@@ -201,7 +225,11 @@ The `--command` option allows you to execute a command remotely after the rsync 
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ## `ssh` Command
@@ -218,11 +246,15 @@ The `name` argument specifies the name of the machine to connect to.
 
 #### `--command`, `-c`
 
-The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `-c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
+The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `drifter ssh -c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ## `up` Command
@@ -239,7 +271,16 @@ The `name` argument specifies the name of the machine to bring up.
 
 #### `--provider`
 
-The `--provider` option allows for specifying which provider to create the machine in. By default, the provider will be VirtualBox.
+The `--provider` option allows for specifying which provider to create the machine in. By default, the provider will be VirtualBox. You can override this by either setting a `provider` value in the config or by setting a `DRIFTER_PROVIDER` environment variable.
+
+```sh
+# For one-time usage
+DRIFTER_PROVIDER='foobar' drifter up
+
+# Or, set it and forget it
+export DRIFTER_PROVIDER='foobar'
+drifter up
+```
 
 #### `--provision`, `--no-provision`
 
@@ -247,7 +288,11 @@ The `--provision` and `--no-provision` options determine whether or not to provi
 
 #### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 ----
 
@@ -286,7 +331,11 @@ The `--force` option allows you to bypass the confirmation prompt and go straigh
 
 ##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ### `halt` Command
@@ -303,24 +352,32 @@ The `name` argument specifies the name of the machine to halt.
 
 ##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
-## `provision` Command
+### `provision` Command
 
 The `provision` command provisions a machine for use. This can include copying files, running programs, or executing scripts.
 
-### Arguments
+#### Arguments
 
-#### `name`
+##### `name`
 
 The `name` argument specifies the name of the machine to provision.
 
-### Options
+#### Options
 
-#### `--quiet`, `-q`
+##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ### `rsync` Command
@@ -339,11 +396,13 @@ The `name` argument specifies the name of the machine to connect to.
 
 The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
 
-The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
-
 ##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 #### Additional Options
 
@@ -372,15 +431,19 @@ It's worth noting that when a file changes, it may also trigger other events. Al
 
 The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
 
-The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
-
-##### `--quiet`, `-q`
-
-The `--quiet` option suppresses any output from the command.
+The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `drifter rsync-auto -c 'echo {}'` will echo the file paths that have changed.
 
 ##### `--run-once`
 
 The `--run-once` option signals to only execute the `--command` option once. This is useful when the command specified runs continuously, so there's no need to start multiple instances of the command.
+
+##### `--quiet`, `-q`
+
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 #### Additional Options
 
@@ -401,11 +464,15 @@ The `name` argument specifies the name of the machine to connect to.
 
 ##### `--command`, `-c`
 
-The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `-c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
+The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `drifter ssh -c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
 
 ##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 #### Additional Options
 
@@ -448,7 +515,11 @@ You can also specify multiple ports to forward by separating each string with a 
 
 ##### `--quiet`, `-q`
 
-The `--quiet` option suppresses any output from the command.
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 ----
 

@@ -22,7 +22,7 @@ def main():
         print()
     except DrifterException as e:
         message = getattr(e, 'msg', e.message)
-        click.secho('ERROR: {0}'.format(message), bold=True, fg='red')
+        logging.error(click.style('ERROR: %s', bold=True, fg='red'), message)
         sys.exit(1)
 
 
@@ -41,20 +41,20 @@ def run():
         pass
 
     @click.group(invoke_without_command=True, cls=CommandLoader)
-    @click.option('--debug', help='Enable debug mode.', is_flag=True)
     @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')
     @click.pass_context
-    def cli(ctx, debug):
-        """Command line interface entry point."""
+    def cli(ctx):
+        """Create development machines with ease."""
         ctx.ensure_object(dict)
         ctx.obj['meta'] = {
             'version': __version__,
             'author': __author__,
         }
         ctx.obj['config'] = config
+        ctx.obj['verbosity'] = 0
+        ctx.obj['log_level'] = logging.INFO
 
-        level = logging.DEBUG if debug else logging.INFO
-        logging.basicConfig(format='%(levelname)s: %(message)s', level=level)
+        logging.basicConfig(format='%(message)s', level=ctx.obj['log_level'])
 
         if ctx.invoked_subcommand:
             return

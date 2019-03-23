@@ -16,10 +16,10 @@ setup(
     include_package_data=True,
 
     install_requires=[
-        'click',
-        'PyYAML',
-        'watchdog',
-        'defusedxml',
+        'click', # core cli functions
+        'defusedxml', # safer xml parser
+        'PyYAML', # yaml parser
+        'watchdog', # watch filesystem events (for rsync-auto)
     ],
 
     entry_points='''
