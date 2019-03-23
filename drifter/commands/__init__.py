@@ -177,8 +177,11 @@ class CommandLoader(click.MultiCommand):
             error_msg = str(error)
             original_cmd_name = click.utils.make_str(args[0])
             matches = difflib.get_close_matches(original_cmd_name,
-                                                self.list_commands(ctx), 5, 0.5)
-            if matches:
+                                                self.list_commands(ctx), 5, 0.6)
+
+            if len(matches) == 1:
+                error_msg += '\n\nDid you mean "{0}"?\n'.format(matches[0])
+            elif matches:
                 error_msg += '\n\nDid you mean one of these?\n    {0}'.format('\n    '.join(matches))
 
             raise click.exceptions.UsageError(error_msg, error.ctx)
