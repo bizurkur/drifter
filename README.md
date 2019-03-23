@@ -218,7 +218,7 @@ The `name` argument specifies the name of the machine to connect to.
 
 #### `--command`, `-c`
 
-The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `-c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
+The `--command` option allows you to execute a command remotely without opening a full connection in your terminal. For example, `drifter ssh -c 'ls -al'` will display a list of files on the remote machine and then return your terminal to the current working directory.
 
 #### `--quiet`, `-q`
 
@@ -239,7 +239,16 @@ The `name` argument specifies the name of the machine to bring up.
 
 #### `--provider`
 
-The `--provider` option allows for specifying which provider to create the machine in. By default, the provider will be VirtualBox.
+The `--provider` option allows for specifying which provider to create the machine in. By default, the provider will be VirtualBox. You can override this by either setting a `provider` value in the config or by setting a `DRIFTER_PROVIDER` environment variable.
+
+```sh
+# For one-time usage
+DRIFTER_PROVIDER='foobar' drifter up
+
+# Or, set it and forget it
+export DRIFTER_PROVIDER='foobar'
+drifter up
+```
 
 #### `--provision`, `--no-provision`
 
@@ -306,19 +315,19 @@ The `name` argument specifies the name of the machine to halt.
 The `--quiet` option suppresses any output from the command.
 
 
-## `provision` Command
+### `provision` Command
 
 The `provision` command provisions a machine for use. This can include copying files, running programs, or executing scripts.
 
-### Arguments
+#### Arguments
 
-#### `name`
+##### `name`
 
 The `name` argument specifies the name of the machine to provision.
 
-### Options
+#### Options
 
-#### `--quiet`, `-q`
+##### `--quiet`, `-q`
 
 The `--quiet` option suppresses any output from the command.
 
@@ -338,8 +347,6 @@ The `name` argument specifies the name of the machine to connect to.
 ##### `--command`, `-c`
 
 The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
-
-The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
 
 ##### `--quiet`, `-q`
 
@@ -372,7 +379,7 @@ It's worth noting that when a file changes, it may also trigger other events. Al
 
 The `--command` option allows you to execute a command remotely after the rsync is complete. This can be very useful for many things, such as compiling web assets after a change is made to some CSS or JS.
 
-The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `-c 'echo {}'` will echo the file paths that have changed.
+The command can contain a `{}` placeholder to represent the file path(s) being rsynced, e.g. `drifter rsync-auto -c 'echo {}'` will echo the file paths that have changed.
 
 ##### `--quiet`, `-q`
 

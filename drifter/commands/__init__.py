@@ -50,6 +50,7 @@ PROVIDER_OPTION = click.option(
     metavar='PROVIDER',
     type=click.Choice(get_providers()),
     help='Which provider to use.',
+    default=os.environ.get('DRIFTER_PROVIDER'),
 )
 
 COMMAND_OPTION = click.option(
