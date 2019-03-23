@@ -22,7 +22,7 @@ def main():
         print()
     except DrifterException as e:
         message = getattr(e, 'msg', e.message)
-        click.secho('ERROR: {0}'.format(message), bold=True, fg='red')
+        logging.error(click.style('ERROR: %s', bold=True, fg='red'), message)
         sys.exit(1)
 
 
@@ -54,7 +54,7 @@ def run():
         ctx.obj['config'] = config
 
         level = logging.DEBUG if debug else logging.INFO
-        logging.basicConfig(format='%(levelname)s: %(message)s', level=level)
+        logging.basicConfig(format='%(message)s', level=level)
 
         if ctx.invoked_subcommand:
             return

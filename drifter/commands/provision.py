@@ -1,6 +1,8 @@
 """Provision a machine."""
 from __future__ import absolute_import, division, print_function
 
+import logging
+
 import click
 
 import drifter.commands
@@ -22,15 +24,10 @@ def provision(ctx, config, name, quiet):
     # Provision the named machine only
     if name:
         _provision(ctx, config, name, quiet)
-
         return
 
-    machines = config.list_machines()
-    if not machines:
-        raise GenericException('No machines available.')
-
     # Provision all machines
-    for machine in machines:
+    for machine in drifter.commands.list_machines(config):
         _provision(ctx, config, machine, quiet)
 
 
@@ -50,7 +47,7 @@ def do_provision(config, servers, provisioners=None, verbose=True):
             name = provisioner.get('name', kind)
 
             if verbose and name:
-                click.secho('==> Running "{0}" provisioner...'.format(name))
+                logging.info('==> Running "%s" provisioner...', name)
 
             try:
                 module = __import__(

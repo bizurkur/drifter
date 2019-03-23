@@ -23,7 +23,6 @@ def up_command(ctx, config, name, provider, provision, quiet):
     # Start the named machine only
     if name:
         _up_command(ctx, config, name, provider, provision, quiet)
-
         return
 
     # Check for multi-machine setup
@@ -32,7 +31,7 @@ def up_command(ctx, config, name, provider, provision, quiet):
         # Check for single machine setup
         name = config.get_default('name')
         if not name:
-            raise GenericException('No machines available.')
+            drifter.commands.no_machine_warning()
         machines = [name]
 
     # Add machines from state file

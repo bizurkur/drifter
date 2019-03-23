@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 import click
 
 import drifter.commands
-from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
 
@@ -22,15 +21,10 @@ def destroy(ctx, config, name, force, quiet):
     # Destroy the named machine only
     if name:
         _destroy(ctx, config, name, force, quiet)
-
         return
 
-    machines = config.list_machines()
-    if not machines:
-        raise GenericException('No machines available.')
-
     # Destroy all machines
-    for machine in machines:
+    for machine in drifter.commands.list_machines(config):
         _destroy(ctx, config, machine, force, quiet)
 
 

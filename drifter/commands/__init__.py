@@ -2,12 +2,35 @@
 from __future__ import absolute_import, division, print_function
 
 import difflib
+import logging
 import os
+import sys
 from functools import update_wrapper
 
 import click
 
 from drifter.providers import get_providers
+
+
+def no_machine_warning():
+    """Warn that no machines exist and die."""
+    logging.warning(
+        click.style(
+            'No machines available. Run `drifter up` to create one.',
+            bold=True,
+            fg='yellow',
+        ),
+    )
+    sys.exit(1)
+
+
+def list_machines(config, provider=None):
+    """List available machines and die if none found."""
+    machines = config.list_machines(provider)
+    if machines:
+        return machines
+
+    return no_machine_warning()
 
 
 def _get_name(ctx, unused_param, value):

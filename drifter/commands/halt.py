@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 import click
 
 import drifter.commands
-from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
 
 
@@ -21,15 +20,10 @@ def halt(ctx, config, name, quiet):
     # Halt the named machine only
     if name:
         _halt(ctx, config, name, quiet)
-
         return
 
-    machines = config.list_machines()
-    if not machines:
-        raise GenericException('No machines available.')
-
     # Halt all machines
-    for machine in machines:
+    for machine in drifter.commands.list_machines(config):
         _halt(ctx, config, machine, quiet)
 
 

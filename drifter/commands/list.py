@@ -13,13 +13,8 @@ from drifter.exceptions import InvalidArgumentException
 @drifter.commands.pass_config
 def list_command(config, select, no_select):
     """List available machines."""
-    machines = config.list_machines()
+    machines = drifter.commands.list_machines(config)
     machines.sort()
-
-    if not machines:
-        click.echo('No machines available. Use `drifter up` to create one.')
-
-        return
 
     if select:
         _select(config, select, machines)
@@ -46,7 +41,6 @@ def _select(config, machine, machines):
     if config.has_machine(machine):
         config.set_selected(machine)
         config.save_state()
-
         return
 
     # Select by index
@@ -59,7 +53,6 @@ def _select(config, machine, machines):
     if 0 <= index < len(machines):
         config.set_selected(machines[index])
         config.save_state()
-
         return
 
     raise InvalidArgumentException('Unable to select machine "{0}".'.format(machine))

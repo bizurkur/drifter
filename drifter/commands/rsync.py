@@ -26,15 +26,10 @@ def rsync(ctx, config, name, command, quiet):
     # Rsync to the named machine only
     if name:
         _rsync(ctx, config, name, command, quiet)
-
         return
 
-    machines = config.list_machines()
-    if not machines:
-        raise GenericException('No machines available.')
-
     # Rsync to all machines
-    for machine in machines:
+    for machine in drifter.commands.list_machines(config):
         _rsync(ctx, config, machine, command, quiet)
 
 

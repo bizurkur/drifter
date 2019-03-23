@@ -31,7 +31,7 @@ class Provider(object):
 
     def load_machine(self, name, silent=False):
         """Load a machine for usage and make sure it's accessible."""
-        logging.debug('Loading machine "%s"...', (name))
+        logging.debug('Loading machine "%s"...', name)
         try:
             self.machine = self.vbox.findMachine(name)
         except Exception as e:
@@ -93,7 +93,7 @@ class Provider(object):
 
     def create(self, name, os_type):
         """Create a machine and register it with VirtualBox."""
-        logging.debug('Creating machine "%s"...', (name))
+        logging.debug('Creating machine "%s"...', name)
 
         try:
             self.machine = self.vbox.createMachine('', name, [], os_type, '')
@@ -105,7 +105,8 @@ class Provider(object):
                 'Failed to create machine: {0}'.format(message),
             )
 
-        logging.debug('Registering machine...')
+        logging.debug('Machine created.')
+        logging.debug('Registering machine "%s"...', name)
         try:
             self.vbox.registerMachine(self.machine)
         except Exception as e:
@@ -125,12 +126,14 @@ class Provider(object):
                 'Failed to register machine: {0}'.format(message),
             )
 
+        logging.debug('Machine registered.')
+
     def clone_from(self, disks):
         """Clone a list of disks into the machine.
 
         Disks should be a list of paths to valid VirtualBox disk files.
         """
-        logging.debug('Creating disk clones...')
+        logging.debug('Cloning disks...')
 
         port_count = len(disks)
         storage = self._create_storage(port_count)
@@ -139,6 +142,8 @@ class Provider(object):
         for disk in disks:
             self._create_disk_clone(disk, storage, port)
             port += 1
+
+        logging.debug('Cloning complete.')
 
     def destroy(self):
         """Destroy a machine."""
@@ -168,6 +173,7 @@ class Provider(object):
                 'Failed to delete files for machine: {0}'.format(message),
             )
         logging.debug('Files deleted.')
+        logging.debug('Machine destroyed.')
 
     def start(self, head=False, memory=None, mac=None, ports=None):
         """Start a machine."""
@@ -193,6 +199,8 @@ class Provider(object):
             raise VirtualBoxException('Failed to start machine: {0}'.format(message))
         finally:
             self.release_lock()
+
+        logging.debug('Machine started.')
 
     def stop(self):
         """Stop a machine."""
@@ -259,7 +267,7 @@ class Provider(object):
 
     def get_base_metadata(self, base):
         """Read the XML file for a base machine and return the metadata."""
-        logging.debug('Detecting settings for "%s"...', (base))
+        logging.debug('Detecting metadata for "%s"...', base)
 
         os_type = None
         media = []
@@ -287,11 +295,13 @@ class Provider(object):
             raise VirtualBoxException(
                 'Unable to determine "{0}" OS type.'.format(base),
             )
+        logging.debug('Detected OS as "%s"', os_type.value)
 
         disks = machine.getElementsByTagName('HardDisk')
         for disk in disks:
             loc = disk.attributes.get('location', None)
             if loc:
+                logging.debug('Detected disk "%s"', loc.value)
                 media.append(os.path.join(base, loc.value))
 
         if not media:
@@ -303,7 +313,7 @@ class Provider(object):
         }
 
     def _create_storage(self, port_count):
-        logging.debug('Creating storage...')
+        logging.debug('Creating storage for %s disks...', port_count)
 
         try:
             self.acquire_lock()
@@ -324,11 +334,12 @@ class Provider(object):
         finally:
             self.release_lock()
 
+            logging.debug('Storage created.')
         return storage
 
     def _create_disk_clone(self, filename, storage, port):
         basename = os.path.basename(filename)
-        logging.debug('Cloning disk "%s"...', (basename))
+        logging.debug('Cloning disk "%s"...', basename)
 
         machine_dir = os.path.dirname(self.machine.settingsFilePath)
         medium_path = os.path.join(machine_dir, basename)
@@ -338,6 +349,7 @@ class Provider(object):
 
             extension = os.path.splitext(filename)[1].lstrip('.')
 
+            logging.debug('Creating destination medium...')
             medium = self.vbox.createMedium(
                 extension,
                 medium_path,
@@ -345,6 +357,7 @@ class Provider(object):
                 self.manager.constants.DeviceType_HardDisk,
             )
 
+            logging.debug('Opening source medium...')
             parent = self.vbox.openMedium(
                 filename,
                 self.manager.constants.DeviceType_HardDisk,
@@ -352,9 +365,11 @@ class Provider(object):
                 False,
             )
 
+            logging.debug('Cloning source to destination...')
             progress = parent.cloneToBase(medium, [self.manager.constants.MediumVariant_Standard])
             progress.waitForCompletion(-1)
 
+            logging.debug('Attaching device...')
             self.session.machine.attachDevice(
                 storage.name,
                 port,
@@ -366,7 +381,7 @@ class Provider(object):
         except Exception as e:
             logging.debug('Failed to clone disk.')
             if os.path.exists(medium_path):
-                logging.debug('Removing medium "%s"...', (medium_path))
+                logging.debug('Removing medium "%s"...', medium_path)
                 os.remove(medium_path)
 
             message = getattr(e, 'msg', e.message)
@@ -375,6 +390,8 @@ class Provider(object):
             )
         finally:
             self.release_lock()
+
+        logging.debug('Disk cloned.')
 
     def _set_boot(self, memory):
         logging.debug('Saving machine settings...')
@@ -385,7 +402,9 @@ class Provider(object):
         try:
             self.acquire_lock()
 
+            logging.debug('Setting memory to %s...', memory)
             self.session.machine.memorySize = memory
+            logging.debug('Setting boot order...')
             self.session.machine.setBootOrder(1, self.manager.constants.DeviceType_HardDisk)
             self.session.machine.setBootOrder(2, self.manager.constants.DeviceType_Null)
             self.session.machine.setBootOrder(3, self.manager.constants.DeviceType_Null)
@@ -399,17 +418,22 @@ class Provider(object):
         finally:
             self.release_lock()
 
+        logging.debug('Settings saved.')
+
     def _configure_networks(self, nat_mac):
         logging.debug('Configuring network(s)...')
         try:
             self.acquire_lock()
 
+            logging.debug('Creating NAT...')
             network_a = self.session.machine.getNetworkAdapter(0)
             network_a.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
             network_a.enabled = True
             network_a.cableConnected = True
             if nat_mac:
+                logging.debug('Setting MAC to %s', nat_mac)
                 network_a.MACAddress = nat_mac
+            logging.debug('NAT created.')
 
             # network_b = self.session.machine.getNetworkAdapter(1)
             # network_b.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
@@ -426,6 +450,8 @@ class Provider(object):
         finally:
             self.release_lock()
 
+        logging.debug('Network(s) configured.')
+
     def _forward_ports(self, port_string):
         orig_list = self._parse_ports(port_string)
         port_list = self._get_collision_free_ports(orig_list)
@@ -436,12 +462,14 @@ class Provider(object):
 
             network = self.session.machine.getNetworkAdapter(0)
 
+            logging.debug('Removing old redirects...')
             redirects = network.NATEngine.getRedirects()
             for redirect in redirects:
                 parts = redirect.split(',', 2)
                 network.NATEngine.removeRedirect(parts[0])
 
             for ports in port_list:
+                logging.debug('Forwarding port %s (host) to %s (guest)...', ports['host'], ports['guest'])
                 network.NATEngine.addRedirect(
                     '{0}:{1}:{2}'.format(
                         ports['host'],
@@ -461,6 +489,8 @@ class Provider(object):
             raise VirtualBoxException('Failed to forward ports: {0}'.format(message))
         finally:
             self.release_lock()
+
+        logging.debug('Ports forwarded.')
 
     def _merge_ports(self, ports):
         return ','.join(
@@ -551,6 +581,7 @@ class Provider(object):
 
     def _get_collision_free_ports(self, port_list):
         """Ensure all ports won't conflict with other machines."""
+        logging.debug('Detecting collision free ports...')
         for port in port_list:
             port['host'] = self._get_collision_free_port(port['host'])
 
@@ -578,7 +609,7 @@ class Provider(object):
                     pass
 
         while port in used_ports:
-            logging.debug('Port {0} is in use. Trying {1}...'.format(port, port + 1))
+            logging.debug('Port %s is in use. Trying %s...', port, port + 1)
             port += 1
 
         return port
