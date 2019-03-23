@@ -14,19 +14,19 @@ from drifter.utils import get_cli
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.NAME_ARGUMENT
-@drifter.commands.COMMAND_OPTION
-@drifter.commands.QUIET_OPTION
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
-def ssh(ctx, config, name, command, quiet):
+def ssh(ctx, config, name, command):
     """Open a Secure Shell to a machine."""
     if not name:
         machines = drifter.commands.list_machines(config)
         name = machines.pop()
 
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
 def do_ssh(config, servers, additional_args=None, command=None, filelist=None, verbose=True):

@@ -15,25 +15,25 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.NAME_ARGUMENT
-@drifter.commands.QUIET_OPTION
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
 @drifter.commands.pass_config
 @click.pass_context
-def provision(ctx, config, name, quiet):
+def provision(ctx, config, name):
     """Provision a machine."""
     # Provision the named machine only
     if name:
-        _provision(ctx, config, name, quiet)
+        _provision(ctx, config, name)
         return
 
     # Provision all machines
     for machine in drifter.commands.list_machines(config):
-        _provision(ctx, config, machine, quiet)
+        _provision(ctx, config, machine)
 
 
-def _provision(ctx, config, name, quiet):
+def _provision(ctx, config, name):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + (['--quiet'] if quiet else []) + ctx.args)
+    invoke_provider_context(ctx, provider, [name] + ctx.args)
 
 
 def do_provision(config, servers, provisioners=None, verbose=True):
@@ -46,7 +46,7 @@ def do_provision(config, servers, provisioners=None, verbose=True):
             kind = provisioner.get('type', None)
             name = provisioner.get('name', kind)
 
-            if verbose and name:
+            if name:
                 logging.info('==> Running "%s" provisioner...', name)
 
             try:

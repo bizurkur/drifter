@@ -12,17 +12,17 @@ from drifter.providers import invoke_provider_context
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.NAME_ARGUMENT
-@drifter.commands.PROVIDER_OPTION
-@drifter.commands.PROVISION_OPTION
-@drifter.commands.QUIET_OPTION
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
+@drifter.commands.provider_option
+@drifter.commands.provision_option
 @drifter.commands.pass_config
 @click.pass_context
-def up_command(ctx, config, name, provider, provision, quiet):
+def up_command(ctx, config, name, provider, provision):
     """Bring up a machine."""
     # Start the named machine only
     if name:
-        _up_command(ctx, config, name, provider, provision, quiet)
+        _up_command(ctx, config, name, provider, provision)
         return
 
     # Check for multi-machine setup
@@ -42,10 +42,10 @@ def up_command(ctx, config, name, provider, provision, quiet):
     for machine in machines:
         if not config.get_machine_default(machine, 'autostart', True):
             continue
-        _up_command(ctx, config, machine, provider, provision, quiet)
+        _up_command(ctx, config, machine, provider, provision)
 
 
-def _up_command(ctx, config, name, provider, provision, quiet):
+def _up_command(ctx, config, name, provider, provision):
     # Precedence: machine-specific, CLI override, config default, 'virtualbox'
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
@@ -66,8 +66,6 @@ def _up_command(ctx, config, name, provider, provision, quiet):
             )
 
     args = []
-    if quiet:
-        args.append('-quiet')
     if provision is True:
         args.append('--provision')
     elif provision is False:

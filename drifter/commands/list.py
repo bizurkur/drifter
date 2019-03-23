@@ -8,6 +8,7 @@ from drifter.exceptions import InvalidArgumentException
 
 
 @click.command(name='list')
+@drifter.commands.verbosity_options
 @click.option('--select', help='Selects a machine')
 @click.option('--no-select', help='Selects no machines', is_flag=True)
 @drifter.commands.pass_config

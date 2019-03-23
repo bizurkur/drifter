@@ -16,30 +16,30 @@ from drifter.utils import get_cli
     'ignore_unknown_options': True,
     'allow_extra_args': True,
 })
-@drifter.commands.NAME_ARGUMENT
-@drifter.commands.COMMAND_OPTION
-@drifter.commands.QUIET_OPTION
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
+@drifter.commands.command_option
 @drifter.commands.pass_config
 @click.pass_context
-def rsync(ctx, config, name, command, quiet):
+def rsync(ctx, config, name, command):
     """Rsync files to a machine."""
     # Rsync to the named machine only
     if name:
-        _rsync(ctx, config, name, command, quiet)
+        _rsync(ctx, config, name, command)
         return
 
     # Rsync to all machines
     for machine in drifter.commands.list_machines(config):
-        _rsync(ctx, config, machine, command, quiet)
+        _rsync(ctx, config, machine, command)
 
 
-def _rsync(ctx, config, name, command, quiet):
+def _rsync(ctx, config, name, command):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name, '-c', command] + (['--quiet'] if quiet else []) + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
 
 def do_rsync(config, servers, additional_args=None, command=None, filelist=None,
-             verbose=True, local_path=None, remote_path=None, **kwargs):
+             verbose=True, ssh_verbose=None, local_path=None, remote_path=None, **kwargs):
     """Rsync files to the given servers via SSH."""
     local_path = get_local_path(config, local_path)
     if remote_path is None:
@@ -74,7 +74,9 @@ def do_rsync(config, servers, additional_args=None, command=None, filelist=None,
         get_cli(this_command, verbose)
 
     if command:
-        base_ssh.do_ssh(config, servers, command=command, filelist=filelist)
+        if ssh_verbose is None:
+            ssh_verbose = verbose
+        base_ssh.do_ssh(config, servers, command=command, filelist=filelist, verbose=ssh_verbose)
 
 
 def _get_base_command(config, **kwargs):
