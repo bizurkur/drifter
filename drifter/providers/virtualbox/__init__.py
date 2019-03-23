@@ -277,6 +277,43 @@ def _halt(provider, config, name):
 @virtualbox.command()
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
+@drifter.commands.pass_config
+@drifter.providers.pass_provider
+def status(provider, config, name):
+    """Get the status of a VitualBox machine."""
+    if name:
+        _status(provider, config, name)
+        return
+
+    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+        _status(provider, config, machine)
+
+
+def _status(provider, config, name):
+    settings = config.get_machine(name)
+    provider.load_machine(name)
+
+    output = [
+        ['Name:', '{0} ({1})'.format(name, settings.get('provider', 'unknown'))],
+        ['Status:', 'Running' if provider.is_running() else 'Halted'],
+    ]
+
+    server = provider.get_server_data()
+    for forward in server['redirects']:
+        output.append(['Ports:', '{0} (host) -> {1} (guest)'.format(forward['host_port'], forward['guest_port'])])
+
+    click.echo('')
+
+    longest_output_key = max(len(x[0]) for x in output)
+    for entry in output:
+        click.echo('    {0:{1}}  {2}'.format(entry[0], longest_output_key, entry[1]))
+
+    click.echo('')
+
+
+@virtualbox.command()
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
 @drifter.commands.command_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider

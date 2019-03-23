@@ -67,6 +67,7 @@ With the exception of the `up` command, all other commands automatically detect 
 - [rsync](#rsync-command)
 - [rsync-auto](#rsync-auto-command)
 - [ssh](#ssh-command)
+- [status](#status-command)
 - [up](#up-command)
 
 
@@ -257,6 +258,27 @@ The `--quiet` option decreases the verbosity of the command. Multiple instances 
 The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
+## `status` Command
+
+The `status` command gets the status and some basic metadata for a machine. This includes printing its name, provider, and other information that may vary by provider.
+
+### Arguments
+
+#### `name`
+
+The `name` argument specifies the name of the machine to get the status for.
+
+### Options
+
+#### `--quiet`, `-q`
+
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+#### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
+
+
 ## `up` Command
 
 The `up` command brings machines up and gets them running. This may involve creating the machine if it doesn't exist or may simply require starting it if it is in a stopped state. This is typically the first command you will need to run.
@@ -310,6 +332,7 @@ The `--verbose` option increases the verbosity of the command. Multiple instance
 - [rsync](#rsync-command-1)
 - [rsync-auto](#rsync-auto-command-1)
 - [ssh](#ssh-command-1)
+- [status](#status-command-1)
 - [up](#up-command-1)
 
 
@@ -477,6 +500,27 @@ The `--verbose` option increases the verbosity of the command. Multiple instance
 #### Additional Options
 
 This command allows for a direct interaction with the underlying system command and any argument or option can be passed to it. To pass in direct options, simply add a `--` (double hyphen) argument followed by whatever you want to pass in. For example, if you wanted to forward the authentication agent connection, you would do `drifter ssh -- -A`. Or if you wanted to see the verbose connection details, `drifter ssh -- -vvv`.
+
+
+### `status` Command
+
+The `status` command gets the status and some basic metadata for a machine. This includes printing its name, provider, and any forwarded ports.
+
+#### Arguments
+
+##### `name`
+
+The `name` argument specifies the name of the machine to get the status for.
+
+#### Options
+
+##### `--quiet`, `-q`
+
+The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
+
+##### `--verbose`, `-v`
+
+The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
 
 
 ### `up` Command
