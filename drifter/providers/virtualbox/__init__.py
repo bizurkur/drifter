@@ -120,7 +120,7 @@ def _do_up_provision(provider, config, name, provision, quiet):
     settings = config.get_machine(name)
     if settings.get('provisioned', False) and not provision:
         click.secho('==> Skipping provision because it already ran.')
-        click.secho('==> Use the --provision flag to force a provision or use `drifter provision`')
+        click.secho('==> Use the --provision flag to force a provision or run `drifter provision`')
         return
 
     # Do provision
