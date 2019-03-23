@@ -41,6 +41,8 @@ def up_command(ctx, config, name, provider, provision, quiet):
             machines.append(machine)
 
     for machine in machines:
+        if not config.get_machine_default(machine, 'autostart', True):
+            continue
         _up_command(ctx, config, machine, provider, provision, quiet)
 
 
