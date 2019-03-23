@@ -25,11 +25,10 @@ def run(config, servers, provisioner, verbose=True):
     command = exports + command
 
     # Run command as privileged user
-    runas = provisioner.get('runas', None)
-    if runas:
+    sudo = provisioner.get('sudo', False)
+    if sudo:
         # Escape quotes to prevent errors; ' becomes '"'"'
-        command = "sudo runuser -l {0} -c '{1}'".format(
-            runas,
+        command = "sudo -- sh -c '{0}'".format(
             re.sub(r'\'', '\'"\'"\'', command),
         )
 
