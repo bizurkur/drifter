@@ -2,8 +2,7 @@
 dist: trusty
 
 language: python
-php:
-  # until 2020-01-01
+python:
   - '2.7'
   - '3.4'
 
