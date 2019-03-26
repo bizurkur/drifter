@@ -21,7 +21,7 @@ def main():
     except KeyboardInterrupt as e:
         print()
     except DrifterException as e:
-        message = getattr(e, 'msg', e.message)
+        message = str(e)
         logging.error(click.style('ERROR: %s', bold=True, fg='red'), message)
         sys.exit(1)
 

@@ -39,8 +39,7 @@ class Provider(object):
             if silent:
                 return False
 
-            message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException(message)
+            raise VirtualBoxException(str(e))
 
         logging.debug('Checking machine accessibility...')
         if not self.machine.accessible:
@@ -100,9 +99,8 @@ class Provider(object):
         except Exception as e:
             logging.debug('Create failed. Aborting...')
 
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to create machine: {0}'.format(message),
+                'Failed to create machine: {0}'.format(str(e)),
             )
 
         logging.debug('Machine created.')
@@ -116,14 +114,12 @@ class Provider(object):
                 progress = self.machine.deleteConfig([])
                 progress.waitForCompletion(-1)
             except Exception as _e:
-                message = getattr(_e, 'msg', e.message)
                 raise VirtualBoxException(
-                    'Failed to clean up registration: {0}'.format(message),
+                    'Failed to clean up registration: {0}'.format(str(_e)),
                 )
 
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to register machine: {0}'.format(message),
+                'Failed to register machine: {0}'.format(str(e)),
             )
 
         logging.debug('Machine registered.')
@@ -157,9 +153,8 @@ class Provider(object):
                 self.manager.constants.CleanupMode_DetachAllReturnHardDisksOnly,
             )
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to unregister machine: {0}'.format(message),
+                'Failed to unregister machine: {0}'.format(str(e)),
             )
         logging.debug('Machine unregistered.')
 
@@ -168,9 +163,8 @@ class Provider(object):
             progress = self.machine.deleteConfig(mediums)
             progress.waitForCompletion(-1)
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to delete files for machine: {0}'.format(message),
+                'Failed to delete files for machine: {0}'.format(str(e)),
             )
         logging.debug('Files deleted.')
         logging.debug('Machine destroyed.')
@@ -195,8 +189,7 @@ class Provider(object):
             )
             progress.waitForCompletion(-1)
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to start machine: {0}'.format(message))
+            raise VirtualBoxException('Failed to start machine: {0}'.format(str(e)))
         finally:
             self.release_lock()
 
@@ -216,9 +209,8 @@ class Provider(object):
             progress.waitForCompletion(-1)
             logging.debug('Shutdown complete.')
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to shutdown machine: {0}'.format(message),
+                'Failed to shutdown machine: {0}'.format(str(e)),
             )
         finally:
             self.release_lock()
@@ -255,8 +247,7 @@ class Provider(object):
                     server['ssh_port'] = parts[3]
 
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to get server data: {0}'.format(message))
+            raise VirtualBoxException('Failed to get server data: {0}'.format(str(e)))
         finally:
             self.release_lock()
 
@@ -327,9 +318,8 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to create machine storage: {0}'.format(message),
+                'Unable to create machine storage: {0}'.format(str(e)),
             )
         finally:
             self.release_lock()
@@ -384,9 +374,8 @@ class Provider(object):
                 logging.debug('Removing medium "%s"...', medium_path)
                 os.remove(medium_path)
 
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to create machine media: {0}'.format(message),
+                'Unable to create machine media: {0}'.format(str(e)),
             )
         finally:
             self.release_lock()
@@ -411,9 +400,8 @@ class Provider(object):
             self.session.machine.setBootOrder(4, self.manager.constants.DeviceType_Null)
             self.session.machine.saveSettings()
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Unable to set machine settings: {0}'.format(message),
+                'Unable to set machine settings: {0}'.format(str(e)),
             )
         finally:
             self.release_lock()
@@ -443,9 +431,8 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
             raise VirtualBoxException(
-                'Failed to configure network: {0}'.format(message),
+                'Failed to configure network: {0}'.format(str(e)),
             )
         finally:
             self.release_lock()
@@ -485,8 +472,7 @@ class Provider(object):
 
             self.session.machine.saveSettings()
         except Exception as e:
-            message = getattr(e, 'msg', e.message)
-            raise VirtualBoxException('Failed to forward ports: {0}'.format(message))
+            raise VirtualBoxException('Failed to forward ports: {0}'.format(str(e)))
         finally:
             self.release_lock()
 

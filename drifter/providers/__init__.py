@@ -40,7 +40,7 @@ def get_provider(provider):
         module = __import__('drifter.providers.{0}'.format(provider), fromlist=['drifter.providers'])
     except ImportError as e:
         raise ProviderException(
-            'Provider "{0}" is invalid: {1}'.format(provider, e.message),
+            'Provider "{0}" is invalid: {1}'.format(provider, str(e)),
         )
 
     cmd = getattr(module, provider, None)
