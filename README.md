@@ -30,6 +30,7 @@ First you need to install the VirtualBox Software Developer Kit (SDK), if not al
 - If on MacOS or linux, run:
 
 ```sh
+$ cd /path/to/sdk/installer
 $ export VBOX_INSTALL_PATH=/usr/lib/virtualbox
 $ sudo -E python vboxapisetup.py install
 ```
