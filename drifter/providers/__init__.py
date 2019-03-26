@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from functools import update_wrapper
+from importlib import import_module
 
 import click
 
@@ -37,7 +38,7 @@ def get_providers():
 def get_provider(provider):
     """Get the given provider module."""
     try:
-        module = __import__('drifter.providers.{0}'.format(provider), fromlist=['drifter.providers'])
+        module = import_module('drifter.providers.{0}'.format(provider), package=__name__)
     except ImportError as e:
         raise ProviderException(
             'Provider "{0}" is invalid: {1}'.format(provider, str(e)),
