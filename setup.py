@@ -24,6 +24,7 @@ setup(
     install_requires=[
         'click', # core cli functions
         'defusedxml', # safer xml parser
+        'six', # 2 to 3 support
         'PyYAML', # yaml parser
         'watchdog', # watch filesystem events (for rsync-auto)
     ],
