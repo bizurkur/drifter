@@ -1,15 +1,21 @@
 """
 Easy and dynamic machine creation.
 """
+import os
 from setuptools import find_packages, setup
+
+
+# load the version
+here = os.path.abspath(os.path.dirname(__file__))
+exec(open(os.path.join(here, 'drifter/version.py')).read())
 
 setup(
     name='drifter',
-    version='0.0.1',
+    version=__version__,
     description='Easy and dynamic machine creation.',
     url='https://github.com/bizurkur/drifter',
     license='MIT',
-    author='Luke Kingsley',
+    author=__author__,
     author_email='bizurkur@gmail.com',
 
     packages=find_packages(exclude=['tests']),

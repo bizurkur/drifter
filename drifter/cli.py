@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import os
 import sys
 
 import click
@@ -10,8 +11,10 @@ from drifter.commands import CommandLoader
 from drifter.config import Config
 from drifter.exceptions import DrifterException
 
-__version__ = '0.1.0'
-__author__ = 'Luke Kingsley'
+
+# load the version
+here = os.path.abspath(os.path.dirname(__file__))
+exec(open(os.path.join(here, 'version.py')).read())
 
 
 def main():
