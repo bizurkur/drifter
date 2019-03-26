@@ -110,7 +110,7 @@ class Config(object):
 
         Optionally, machines can be limited to a specific provider.
         """
-        machines = self.state['machines'].keys()
+        machines = list(self.state['machines'].keys())
         if not provider:
             return machines
 
