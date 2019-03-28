@@ -13,29 +13,10 @@ This is not intended as a 1-to-1 replacement for Vagrant. This is not a port fro
 
 ## Why make it?
 
-Vagrant is awesome and already does this - so why bother? On my computer Vagrant runs extremely slow - we're talking 30 seconds to a full minute just to *start* a command. I suspect it's so slow because Vagrant communicates to VirtualBox directly through the CLI. I believe this is a decision Vagrant made years ago for wider compatibility across different operating systems, but not 100% sure. It's also possible it's my computer that is the bottleneck. Regardless as to why it's slow, the speed is not satisfactory to me. It hinders my ability to get work done and I don't like waiting forever to rsync something as simple as a single-line CSS change.
-
-I found out VirtualBox provides a Python SDK for interacting with VirtualBox over XPCOM. So I started tinkering with it. I quickly realized how much faster it was and decided to make my own tool.
+Vagrant is awesome and already does this - so why bother? On my computer Vagrant runs extremely slow - we're talking 30+ seconds to *start* a command. I don't know why it's so slow (maybe it's my computer), but the speed is not satisfactory to me. It hinders my ability to get work done and I don't like waiting forever to rsync something as simple as a single-line CSS change.
 
 
 # Installation
-
-## Install VirtualBox SDK
-
-First you need to install the VirtualBox Software Developer Kit (SDK), if not already installed. This provides access to the `vboxapi` Python package. To do that:
-
-- Go to the [VirtualBox Downloads](https://www.virtualbox.org/wiki/Downloads) page.
-- Click the link for the Software Developer Kit.
-- Unzip the file.
-- If on MacOS or linux, run:
-
-```sh
-$ cd /path/to/sdk/installer
-$ export VBOX_INSTALL_PATH=/usr/lib/virtualbox
-$ sudo -E python vboxapisetup.py install
-```
-
-## Install `drifter`
 
 ```sh
 $ sudo -E python setup.py install
