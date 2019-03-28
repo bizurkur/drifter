@@ -2,8 +2,8 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
-import re
 import os
+import re
 from configparser import ConfigParser
 from time import sleep
 
@@ -13,6 +13,7 @@ import six
 
 from drifter.exceptions import InvalidArgumentException, ProviderException
 from drifter.utils import get_cli
+
 
 class VirtualBoxException(ProviderException):
     """Exception to represent a VirtualBox error."""
@@ -85,11 +86,11 @@ class Provider(object):
         logging.debug('Cloning disks...')
 
         port_count = len(disks)
-        storage = self._create_storage(name, port_count)
+        self._create_storage(name, port_count)
 
         port = 0
         for disk in disks:
-            self._create_disk_clone(name, disk, storage, port)
+            self._create_disk_clone(name, disk, port)
             port += 1
 
         logging.debug('Cloning complete.')
@@ -169,7 +170,7 @@ class Provider(object):
 
     def get_server_data(self, name, require_ssh=True):
         """Get machine metadata and connection information."""
-        logging.debug('Getting machine data for "{0}"...'.format(name))
+        logging.debug('Getting machine data for "%s"...', name)
 
         server = {
             'redirects': [],
@@ -249,15 +250,13 @@ class Provider(object):
         logging.debug('Creating storage for %s disks...', port_count)
 
         res, code = get_cli(['vboxmanage', 'storagectl', name, '--name', 'SATAController',
-                            '--add', 'sata', '--portcount', port_count, '--hostiocache', 'on'])
-        if code == 0:
-            logging.debug('Storage created.')
+                             '--add', 'sata', '--portcount', port_count, '--hostiocache', 'on'])
+        if code != 0:
+            self._raise_exception('Failed to create machine storage', res)
 
-            return True
+        logging.debug('Storage created.')
 
-        self._raise_exception('Failed to create machine storage', res)
-
-    def _create_disk_clone(self, name, filename, storage, port):
+    def _create_disk_clone(self, name, filename, port):
         basename = os.path.basename(filename)
         logging.debug('Cloning disk "%s"...', basename)
 
@@ -268,7 +267,6 @@ class Provider(object):
 
         machine_dir = os.path.dirname(settings_file)
         medium_path = os.path.join(machine_dir, basename)
-        extension = os.path.splitext(filename)[1].lstrip('.').upper()
 
         def _cleanup(medium_path):
             if not os.path.exists(medium_path):
@@ -286,8 +284,8 @@ class Provider(object):
 
         logging.debug('Attaching device...')
         res, code = get_cli(['vboxmanage', 'storageattach', name, '--storagectl',
-                            'SATAController', '--port', port, '--type', 'hdd',
-                            '--device', 0, '--medium', medium_path])
+                             'SATAController', '--port', port, '--type', 'hdd',
+                             '--device', 0, '--medium', medium_path])
         if code != 0:
             _cleanup(medium_path)
             self._raise_exception('Failed to attach device', res)
@@ -303,7 +301,7 @@ class Provider(object):
 
         logging.debug('Setting memory to %s...', memory)
         res, code = get_cli(['vboxmanage', 'modifyvm', name, '--memory', memory,
-                            '--boot1', 'disk', '--boot2', 'none', '--boot3', 'none', '--boot4', 'none'])
+                             '--boot1', 'disk', '--boot2', 'none', '--boot3', 'none', '--boot4', 'none'])
         if code != 0:
             self._raise_exception('Failed to update machine settings', res)
 
@@ -313,7 +311,8 @@ class Provider(object):
         logging.debug('Configuring network(s)...')
 
         logging.debug('Creating NAT...')
-        res, code = get_cli(['vboxmanage', 'modifyvm', name, '--nic1', 'nat', '--macaddress1', nat_mac if nat_mac else 'auto'])
+        res, code = get_cli(['vboxmanage', 'modifyvm', name, '--nic1', 'nat',
+                             '--macaddress1', nat_mac if nat_mac else 'auto'])
         if code != 0:
             self._raise_exception('Failed to create NAT network', res)
 
@@ -463,11 +462,11 @@ class Provider(object):
                     pass
 
         for port in port_list:
-            port['host'] = self._get_collision_free_port(name, port['host'], used_ports)
+            port['host'] = self._get_collision_free_port(port['host'], used_ports)
 
         return port_list
 
-    def _get_collision_free_port(self, name, port, used_ports):
+    def _get_collision_free_port(self, port, used_ports):
         """Get a port number that won't conflict with other machines."""
         while port in used_ports:
             logging.debug('Port %s is in use. Trying %s...', port, port + 1)
@@ -539,20 +538,20 @@ class Provider(object):
             return cached_info
 
         res, code = get_cli(['vboxmanage', 'showvminfo', name, '--machinereadable'])
-        if code == 0:
-            parser = ConfigParser()
-            parser.read_string(unicode('[DEFAULT]\n'+res))
+        if code != 0:
+            raise VirtualBoxException('Machine not found.')
 
-            cached_info = {}
-            for item in parser.items('DEFAULT'):
-                cached_info[item[0].strip('"')] = item[1].strip('"')
+        parser = ConfigParser()
+        parser.read_string(unicode('[DEFAULT]\n' + res))
 
-            self.cache.setdefault('info', {})
-            self.cache['info'].setdefault(name, cached_info)
+        cached_info = {}
+        for item in parser.items('DEFAULT'):
+            cached_info[item[0].strip('"')] = item[1].strip('"')
 
-            return cached_info
+        self.cache.setdefault('info', {})
+        self.cache['info'].setdefault(name, cached_info)
 
-        raise VirtualBoxException('Machine not found.')
+        return cached_info
 
     def _raise_exception(self, message, res):
         print(res)
