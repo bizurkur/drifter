@@ -263,6 +263,8 @@ class Provider(object):
         data = self._get_machine_info(name)
         settings_file = data.get('cfgfile', None)
         if not settings_file:
+            for key in data:
+                print('%s=%s', (key, data[key]))
             raise VirtualBoxException('Unable to locate settings for machine.')
 
         machine_dir = os.path.dirname(settings_file)
@@ -542,7 +544,7 @@ class Provider(object):
             raise VirtualBoxException('Machine not found.')
 
         parser = ConfigParser()
-        parser.read_string(unicode('[DEFAULT]\n' + res))
+        parser.read_string('[DEFAULT]\n' + res)
 
         cached_info = {}
         for item in parser.items('DEFAULT'):
@@ -554,13 +556,8 @@ class Provider(object):
         return cached_info
 
     def _raise_exception(self, message, res):
-        print(res)
         errors = re.findall(r'VBoxManage: error: ([^\n]+)', res)
         if not errors:
-            raise VirtualBoxException(
-                '{0}: unknown error.'.format(message),
-            )
+            raise VirtualBoxException('{0}: unknown error.'.format(message))
 
-        raise VirtualBoxException(
-            '{0}: {1}'.format(message, errors[0]),
-        )
+        raise VirtualBoxException('{0}: {1}'.format(message, errors[0]))

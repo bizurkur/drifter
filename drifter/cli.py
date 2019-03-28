@@ -31,6 +31,7 @@ def main():
 
 def run():
     """Run the drifter command."""
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
     config = Config()
     config.load_state()
 
@@ -59,8 +60,6 @@ def run():
         ctx.obj['config'] = config
         ctx.obj['verbosity'] = 0
         ctx.obj['log_level'] = logging.INFO
-
-        logging.basicConfig(format='%(message)s', level=ctx.obj['log_level'])
 
         if ctx.invoked_subcommand:
             return

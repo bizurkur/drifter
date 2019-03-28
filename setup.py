@@ -1,13 +1,10 @@
-"""
-Easy and dynamic machine creation.
-"""
+"""Easy and dynamic machine creation."""
 import os
 from setuptools import find_packages, setup
 
 
 # load the version
-here = os.path.abspath(os.path.dirname(__file__))
-exec(open(os.path.join(here, 'drifter/version.py')).read())
+exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'drifter/version.py')).read())
 
 setup(
     name='drifter',
@@ -24,8 +21,8 @@ setup(
     install_requires=[
         'click', # core cli functions
         'defusedxml', # safer xml parser
-        'six', # 2 to 3 support
         'PyYAML', # yaml parser
+        'six', # 2 to 3 support
         'watchdog', # watch filesystem events (for rsync-auto)
     ],
 
