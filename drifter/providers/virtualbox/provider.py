@@ -2,16 +2,17 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import re
 import os
+from configparser import ConfigParser
 from time import sleep
 
 from defusedxml import minidom
 
-# pylint: disable=import-error
-import vboxapi
+import six
 
 from drifter.exceptions import InvalidArgumentException, ProviderException
-
+from drifter.utils import get_cli
 
 class VirtualBoxException(ProviderException):
     """Exception to represent a VirtualBox error."""
@@ -24,107 +25,59 @@ class Provider(object):
 
     def __init__(self):
         """Set up the VirtualBox connection."""
-        self.manager = vboxapi.VirtualBoxManager(None, None)
-        self.vbox = self.manager.getVirtualBox()
-        self.session = self.manager.getSessionObject(self.vbox)
-        self.machine = None
+        self.cache = {}
 
     def load_machine(self, name, silent=False):
         """Load a machine for usage and make sure it's accessible."""
         logging.debug('Loading machine "%s"...', name)
+
         try:
-            self.machine = self.vbox.findMachine(name)
-        except Exception as e:
+            data = self._list_vms()
+        except VirtualBoxException as e:
             logging.debug('Failed to load machine.')
             if silent:
                 return False
 
-            raise VirtualBoxException(str(e))
+            raise e
 
-        logging.debug('Checking machine accessibility...')
-        if not self.machine.accessible:
-            raise VirtualBoxException(
-                'Machine is not accessible: {0}'.format(self.machine.accessError),
-            )
+        if name in data:
+            logging.debug('Machine loaded.')
+            return True
 
-        logging.debug('Machine loaded.')
-        return True
+        logging.debug('Failed to load machine.')
+        if silent:
+            return False
 
-    def acquire_lock(self, write=False):
-        """Acquire the machine lock."""
-        if write:
-            logging.debug('Acquiring write lock...')
-            self.machine.lockMachine(self.session, self.manager.constants.LockType_Write)
-        else:
-            logging.debug('Acquiring shared lock...')
-            self.machine.lockMachine(self.session, self.manager.constants.LockType_Shared)
+        raise VirtualBoxException('Machine "{0}" is not available.'.format(name))
 
-        logging.debug('Lock acquired.')
-
-    def release_lock(self):
-        """Release the machine lock."""
-        logging.debug('Releasing lock...')
-
-        try:
-            self.session.unlockMachine()
-        except Exception:
-            logging.debug('Failed to release lock?')
-
-        # Give it a moment to release the lock
-        sleep(.5)
-
-        logging.debug('Lock released.')
-
-    def is_running(self):
+    def is_running(self, name):
         """Check if a machine is running."""
         logging.debug('Checking if machine is running...')
 
-        if self.machine.state < self.manager.constants.MachineState_FirstOnline:
-            logging.debug('Machine is not running.')
-            return False
+        running = self._list_running_vms()
+        if name in running:
+            logging.debug('Machine is running.')
+            return True
 
-        if self.machine.state > self.manager.constants.MachineState_LastOnline:
-            logging.debug('Machine is not running.')
-            return False
-
-        logging.debug('Machine is running.')
-        return True
+        logging.debug('Machine is not running.')
+        return False
 
     def create(self, name, os_type):
         """Create a machine and register it with VirtualBox."""
         logging.debug('Creating machine "%s"...', name)
 
-        try:
-            self.machine = self.vbox.createMachine('', name, [], os_type, '')
-        except Exception as e:
+        res, code = get_cli(['vboxmanage', 'createvm', '--name', name, '--ostype', os_type, '--register'])
+        if code != 0:
             logging.debug('Create failed. Aborting...')
-
-            raise VirtualBoxException(
-                'Failed to create machine: {0}'.format(str(e)),
-            )
+            self._raise_exception('Failed to create machine', res)
 
         logging.debug('Machine created.')
-        logging.debug('Registering machine "%s"...', name)
-        try:
-            self.vbox.registerMachine(self.machine)
-        except Exception as e:
-            # Clean up any data that was saved
-            logging.debug('Registration failed. Cleaning up...')
-            try:
-                progress = self.machine.deleteConfig([])
-                progress.waitForCompletion(-1)
-            except Exception as _e:
-                raise VirtualBoxException(
-                    'Failed to clean up registration: {0}'.format(str(_e)),
-                )
 
-            raise VirtualBoxException(
-                'Failed to register machine: {0}'.format(str(e)),
-            )
+        self._clear_vms()
 
-        logging.debug('Machine registered.')
+        return self._get_machine_info(name)
 
-    def clone_from(self, disks):
+    def clone_from(self, name, disks):
         """Clone a list of disks into the machine.
 
         Disks should be a list of paths to valid VirtualBox disk files.
@@ -132,126 +85,115 @@ class Provider(object):
         logging.debug('Cloning disks...')
 
         port_count = len(disks)
-        storage = self._create_storage(port_count)
+        storage = self._create_storage(name, port_count)
 
         port = 0
         for disk in disks:
-            self._create_disk_clone(disk, storage, port)
+            self._create_disk_clone(name, disk, storage, port)
             port += 1
 
         logging.debug('Cloning complete.')
 
-    def destroy(self):
+    def destroy(self, name):
         """Destroy a machine."""
         logging.debug('Destroying machine...')
 
-        self.stop()
+        self.stop(name)
 
-        logging.debug('Unregistering machine...')
-        try:
-            mediums = self.machine.unregister(
-                self.manager.constants.CleanupMode_DetachAllReturnHardDisksOnly,
-            )
-        except Exception as e:
-            raise VirtualBoxException(
-                'Failed to unregister machine: {0}'.format(str(e)),
-            )
-        logging.debug('Machine unregistered.')
+        res, code = get_cli(['vboxmanage', 'unregistervm', name, '--delete'])
+        if code != 0:
+            self._raise_exception('Failed to destroy machine', res)
 
-        logging.debug('Deleting files...')
-        try:
-            progress = self.machine.deleteConfig(mediums)
-            progress.waitForCompletion(-1)
-        except Exception as e:
-            raise VirtualBoxException(
-                'Failed to delete files for machine: {0}'.format(str(e)),
-            )
-        logging.debug('Files deleted.')
+        self._clear_vms()
+        self._clear_running_vms()
+
         logging.debug('Machine destroyed.')
 
-    def start(self, head=False, memory=None, mac=None, ports=None):
+    def start(self, name, head=False, memory=None, mac=None, ports=None):
         """Start a machine."""
         logging.debug('Starting machine...')
-        if self.is_running():
-            return
+        if self.is_running(name):
+            return True
 
-        if self.machine.state != self.manager.constants.MachineState_Saved:
-            self._set_boot(memory)
-            self._configure_networks(mac)
-            self._forward_ports(ports)
+        self._set_boot(name, memory)
+        self._configure_networks(name, mac)
+        self._forward_ports(name, ports)
 
         logging.debug('Launching machine...')
-        try:
-            progress = self.machine.launchVMProcess(
-                self.session,
-                'gui' if head else 'headless',
-                '',
-            )
-            progress.waitForCompletion(-1)
-        except Exception as e:
-            raise VirtualBoxException('Failed to start machine: {0}'.format(str(e)))
-        finally:
-            self.release_lock()
+
+        res, code = get_cli(['vboxmanage', 'startvm', name, '--type', 'gui' if head else 'headless'])
+        if code != 0:
+            self._raise_exception('Failed to start machine', res)
+
+        self._clear_running_vms()
 
         logging.debug('Machine started.')
 
-    def stop(self):
-        """Stop a machine."""
-        logging.debug('Stopping machine...')
-        if not self.is_running():
-            return True
-
-        try:
-            self.acquire_lock()
-
-            logging.debug('Forcing a shutdown...')
-            progress = self.session.console.powerDown()
-            progress.waitForCompletion(-1)
-            logging.debug('Shutdown complete.')
-        except Exception as e:
-            raise VirtualBoxException(
-                'Failed to shutdown machine: {0}'.format(str(e)),
-            )
-        finally:
-            self.release_lock()
-
-        logging.debug('Machine stopped.')
         return True
 
-    def get_server_data(self):
+    def stop(self, name):
+        """Stop a machine."""
+        logging.debug('Stopping machine...')
+        if not self.is_running(name):
+            return True
+
+        # Attempt graceful shutdown
+        logging.debug('Attempting graceful shutdown...')
+        res, code = get_cli(['vboxmanage', 'controlvm', name, 'acpipowerbutton'])
+        if code != 0:
+            # Force shutdown
+            logging.debug('Graceful shutdown failed. Forcing power off...')
+            res, code = get_cli(['vboxmanage', 'controlvm', name, 'poweroff'])
+            if code != 0:
+                self._raise_exception('Failed to shutdown machine', res)
+
+        count = 0
+        self._clear_running_vms()
+        while self.is_running(name):
+            count += 1
+            if count >= 30:
+                count = 0
+                # Assume if the machine is still running after 30 secs, something went wrong.
+                # Force a shutdown just to be safe.
+                logging.debug('Forcing power off...')
+                res, code = get_cli(['vboxmanage', 'controlvm', name, 'poweroff'])
+                if code != 0:
+                    self._raise_exception('Failed to shutdown machine', res)
+
+            self._clear_running_vms()
+            sleep(1)
+
+        logging.debug('Machine stopped.')
+
+        return True
+
+    def get_server_data(self, name, require_ssh=True):
         """Get machine metadata and connection information."""
-        logging.debug('Getting machine data...')
+        logging.debug('Getting machine data for "{0}"...'.format(name))
 
         server = {
             'redirects': [],
         }
 
-        try:
-            self.acquire_lock()
+        data = self._get_machine_info(name)
+        for key, value in six.iteritems(data):
+            if not key.startswith('forwarding('):
+                continue
 
-            network = self.session.machine.getNetworkAdapter(0)
+            parts = value.split(',')
+            server['redirects'].append({
+                'name': parts[0],
+                'protocol_id': parts[1],
+                'host_name': parts[2],
+                'host_port': parts[3],
+                'guest_name': parts[4],
+                'guest_port': parts[5],
+            })
+            if parts[5] == '22':
+                server['ssh_host'] = parts[2]
+                server['ssh_port'] = parts[3]
 
-            redirects = network.NATEngine.getRedirects()
-            for redirect in redirects:
-                parts = redirect.split(',')
-                server['redirects'].append({
-                    'name': parts[0],
-                    'protocol_id': parts[1],
-                    'host_name': parts[2],
-                    'host_port': parts[3],
-                    'guest_name': parts[4],
-                    'guest_port': parts[5],
-                })
-                if parts[5] == '22':
-                    server['ssh_host'] = parts[2]
-                    server['ssh_port'] = parts[3]
-
-        except Exception as e:
-            raise VirtualBoxException('Failed to get server data: {0}'.format(str(e)))
-        finally:
-            self.release_lock()
-
-        if not server.get('ssh_port', None):
+        if require_ssh and not server.get('ssh_port', None):
             raise ProviderException('Machine has no SSH port defined.')
 
         return server
@@ -303,178 +245,121 @@ class Provider(object):
             'media': media,
         }
 
-    def _create_storage(self, port_count):
+    def _create_storage(self, name, port_count):
         logging.debug('Creating storage for %s disks...', port_count)
 
-        try:
-            self.acquire_lock()
-
-            storage = self.session.machine.addStorageController(
-                'SATAController',
-                self.manager.constants.StorageBus_SATA,
-            )
-            storage.portCount = port_count
-            storage.useHostIOCache = True
-
-            self.session.machine.saveSettings()
-        except Exception as e:
-            raise VirtualBoxException(
-                'Unable to create machine storage: {0}'.format(str(e)),
-            )
-        finally:
-            self.release_lock()
-
+        res, code = get_cli(['vboxmanage', 'storagectl', name, '--name', 'SATAController',
+                            '--add', 'sata', '--portcount', port_count, '--hostiocache', 'on'])
+        if code == 0:
             logging.debug('Storage created.')
-        return storage
 
-    def _create_disk_clone(self, filename, storage, port):
+            return True
+
+        self._raise_exception('Failed to create machine storage', res)
+
+    def _create_disk_clone(self, name, filename, storage, port):
         basename = os.path.basename(filename)
         logging.debug('Cloning disk "%s"...', basename)
 
-        machine_dir = os.path.dirname(self.machine.settingsFilePath)
+        data = self._get_machine_info(name)
+        settings_file = data.get('cfgfile', None)
+        if not settings_file:
+            raise VirtualBoxException('Unable to locate settings for machine.')
+
+        machine_dir = os.path.dirname(settings_file)
         medium_path = os.path.join(machine_dir, basename)
+        extension = os.path.splitext(filename)[1].lstrip('.').upper()
 
-        try:
-            self.acquire_lock()
-
-            extension = os.path.splitext(filename)[1].lstrip('.')
-
-            logging.debug('Creating destination medium...')
-            medium = self.vbox.createMedium(
-                extension,
-                medium_path,
-                self.manager.constants.AccessMode_ReadWrite,
-                self.manager.constants.DeviceType_HardDisk,
-            )
-
-            logging.debug('Opening source medium...')
-            parent = self.vbox.openMedium(
-                filename,
-                self.manager.constants.DeviceType_HardDisk,
-                self.manager.constants.AccessMode_ReadOnly,
-                False,
-            )
-
-            logging.debug('Cloning source to destination...')
-            progress = parent.cloneToBase(medium, [self.manager.constants.MediumVariant_Standard])
-            progress.waitForCompletion(-1)
-
-            logging.debug('Attaching device...')
-            self.session.machine.attachDevice(
-                storage.name,
-                port,
-                0,
-                self.manager.constants.DeviceType_HardDisk,
-                medium,
-            )
-            self.session.machine.saveSettings()
-        except Exception as e:
-            logging.debug('Failed to clone disk.')
+        def _cleanup(medium_path):
+            if not os.path.exists(medium_path):
+                return
+            logging.debug('Removing medium "%s"...', medium_path)
+            get_cli(['vboxmanage', 'closemedium', 'disk', medium_path, '--delete'])
             if os.path.exists(medium_path):
-                logging.debug('Removing medium "%s"...', medium_path)
                 os.remove(medium_path)
 
-            raise VirtualBoxException(
-                'Unable to create machine media: {0}'.format(str(e)),
-            )
-        finally:
-            self.release_lock()
+        logging.debug('Cloning source to destination...')
+        res, code = get_cli(['vboxmanage', 'clonemedium', 'disk', filename, medium_path])
+        if code != 0:
+            _cleanup(medium_path)
+            self._raise_exception('Failed to clone source medium', res)
+
+        logging.debug('Attaching device...')
+        res, code = get_cli(['vboxmanage', 'storageattach', name, '--storagectl',
+                            'SATAController', '--port', port, '--type', 'hdd',
+                            '--device', 0, '--medium', medium_path])
+        if code != 0:
+            _cleanup(medium_path)
+            self._raise_exception('Failed to attach device', res)
+
+        # clear any cached data
+        self._clear_machine_info(name)
 
         logging.debug('Disk cloned.')
 
-    def _set_boot(self, memory):
-        logging.debug('Saving machine settings...')
-
+    def _set_boot(self, name, memory):
         if not memory:
             memory = 512
 
-        try:
-            self.acquire_lock()
-
-            logging.debug('Setting memory to %s...', memory)
-            self.session.machine.memorySize = memory
-            logging.debug('Setting boot order...')
-            self.session.machine.setBootOrder(1, self.manager.constants.DeviceType_HardDisk)
-            self.session.machine.setBootOrder(2, self.manager.constants.DeviceType_Null)
-            self.session.machine.setBootOrder(3, self.manager.constants.DeviceType_Null)
-            self.session.machine.setBootOrder(4, self.manager.constants.DeviceType_Null)
-            self.session.machine.saveSettings()
-        except Exception as e:
-            raise VirtualBoxException(
-                'Unable to set machine settings: {0}'.format(str(e)),
-            )
-        finally:
-            self.release_lock()
+        logging.debug('Setting memory to %s...', memory)
+        res, code = get_cli(['vboxmanage', 'modifyvm', name, '--memory', memory,
+                            '--boot1', 'disk', '--boot2', 'none', '--boot3', 'none', '--boot4', 'none'])
+        if code != 0:
+            self._raise_exception('Failed to update machine settings', res)
 
         logging.debug('Settings saved.')
 
-    def _configure_networks(self, nat_mac):
+    def _configure_networks(self, name, nat_mac):
         logging.debug('Configuring network(s)...')
-        try:
-            self.acquire_lock()
 
-            logging.debug('Creating NAT...')
-            network_a = self.session.machine.getNetworkAdapter(0)
-            network_a.attachmentType = self.manager.constants.NetworkAttachmentType_NAT
-            network_a.enabled = True
-            network_a.cableConnected = True
-            if nat_mac:
-                logging.debug('Setting MAC to %s', nat_mac)
-                network_a.MACAddress = nat_mac
-            logging.debug('NAT created.')
+        logging.debug('Creating NAT...')
+        res, code = get_cli(['vboxmanage', 'modifyvm', name, '--nic1', 'nat', '--macaddress1', nat_mac if nat_mac else 'auto'])
+        if code != 0:
+            self._raise_exception('Failed to create NAT network', res)
 
-            # network_b = self.session.machine.getNetworkAdapter(1)
-            # network_b.attachmentType = self.manager.constants.NetworkAttachmentType_HostOnly
-            # network_b.enabled = True
-            # network_b.cableConnected = True
-            # network_b.hostOnlyInterface = 'vboxnet0'
-
-            self.session.machine.saveSettings()
-        except Exception as e:
-            raise VirtualBoxException(
-                'Failed to configure network: {0}'.format(str(e)),
-            )
-        finally:
-            self.release_lock()
-
+        logging.debug('NAT created.')
         logging.debug('Network(s) configured.')
 
-    def _forward_ports(self, port_string):
+    def _forward_ports(self, name, port_string):
         orig_list = self._parse_ports(port_string)
-        port_list = self._get_collision_free_ports(orig_list)
+        port_list = self._get_collision_free_ports(name, orig_list)
 
         logging.debug('Forwarding ports...')
-        try:
-            self.acquire_lock()
 
-            network = self.session.machine.getNetworkAdapter(0)
+        command = []
+        data = self._get_machine_info(name)
+        for key, value in six.iteritems(data):
+            if not key.startswith('forwarding('):
+                continue
 
-            logging.debug('Removing old redirects...')
-            redirects = network.NATEngine.getRedirects()
-            for redirect in redirects:
-                parts = redirect.split(',', 2)
-                network.NATEngine.removeRedirect(parts[0])
+            parts = value.split(',', 2)
+            command += ['--natpf1', 'delete', parts[0]]
 
-            for ports in port_list:
-                logging.debug('Forwarding port %s (host) to %s (guest)...', ports['host'], ports['guest'])
-                network.NATEngine.addRedirect(
-                    '{0}:{1}:{2}'.format(
-                        ports['host'],
-                        ports['guest'],
-                        ports['protocol'],
-                    ),
-                    ports['protocol_id'],
-                    '127.0.0.1',
-                    ports['host'],
-                    '',
-                    ports['guest'],
-                )
+        if command:
+            res, code = get_cli(['vboxmanage', 'modifyvm', name] + command)
+            if code != 0:
+                self._raise_exception('Failed to remove existing forwarded ports', res)
 
-            self.session.machine.saveSettings()
-        except Exception as e:
-            raise VirtualBoxException('Failed to forward ports: {0}'.format(str(e)))
-        finally:
-            self.release_lock()
+        command = []
+        count = 1
+        for ports in port_list:
+            logging.debug('Forwarding port %s (host) to %s (guest)...', ports['host'], ports['guest'])
+            pf_name = '{0}:{1}:{2}'.format(
+                ports['host'],
+                ports['guest'],
+                ports['protocol'],
+            )
+            command += ['--natpf{:d}'.format(count), '{0},{1},{2},{3},,{4}'.format(
+                pf_name, ports['protocol'], '127.0.0.1', ports['host'], ports['guest'],
+            )]
+
+        if command:
+            res, code = get_cli(['vboxmanage', 'modifyvm', name] + command)
+            if code != 0:
+                self._raise_exception('Failed to forward ports', res)
+
+        # clear any cached data
+        self._clear_machine_info(name)
 
         logging.debug('Ports forwarded.')
 
@@ -494,10 +379,7 @@ class Provider(object):
         elif isinstance(ports, list):
             ports = self._merge_ports(ports)
 
-        allowed_protocols = {
-            'tcp': self.manager.constants.NATProtocol_TCP,
-            'udp': self.manager.constants.NATProtocol_UDP,
-        }
+        allowed_protocols = ['tcp', 'udp']
 
         has_ssh = False
         parts = ports.split(',')
@@ -527,7 +409,6 @@ class Provider(object):
                 'host': host_port,
                 'guest': guest_port,
                 'protocol': protocol,
-                'protocol_id': allowed_protocols[protocol],
             })
 
         if not has_ssh:
@@ -535,7 +416,6 @@ class Provider(object):
                 'host': 2222,
                 'guest': 22,
                 'protocol': 'tcp',
-                'protocol_id': allowed_protocols['tcp'],
             })
 
         return port_list
@@ -559,43 +439,129 @@ class Provider(object):
             raise InvalidArgumentException(
                 'Protocol "{0}" is invalid; must be one of ["{1}"]'.format(
                     protocol,
-                    '", "'.join(allowed.keys()),
+                    '", "'.join(allowed),
                 ),
             )
 
         return protocol
 
-    def _get_collision_free_ports(self, port_list):
+    def _get_collision_free_ports(self, name, port_list):
         """Ensure all ports won't conflict with other machines."""
         logging.debug('Detecting collision free ports...')
-        for port in port_list:
-            port['host'] = self._get_collision_free_port(port['host'])
 
-        return port_list
-
-    def _get_collision_free_port(self, port):
-        """Get a port number that won't conflict with other machines."""
         used_ports = []
-
-        machines = self.vbox.getMachines()
-        for machine in machines:
-            if machine.id == self.machine.id:
+        for machine in six.iterkeys(self._list_vms()):
+            if name == machine:
                 # Ignore self
                 continue
 
-            network = machine.getNetworkAdapter(0)
-            redirects = network.NATEngine.getRedirects()
-            for redirect in redirects:
-                parts = redirect.split(',')
-                if len(parts) < 5:
-                    continue
+            data = self.get_server_data(machine, False)
+            for redirect in data.get('redirects', []):
                 try:
-                    used_ports.append(int(parts[3]))
+                    used_ports.append(int(redirect['host_port']))
                 except Exception:
                     pass
 
+        for port in port_list:
+            port['host'] = self._get_collision_free_port(name, port['host'], used_ports)
+
+        return port_list
+
+    def _get_collision_free_port(self, name, port, used_ports):
+        """Get a port number that won't conflict with other machines."""
         while port in used_ports:
             logging.debug('Port %s is in use. Trying %s...', port, port + 1)
             port += 1
 
         return port
+
+    def _clear_vms(self):
+        if 'vms' in self.cache:
+            del self.cache['vms']
+
+    def _list_vms(self):
+        cached_vms = self.cache.get('vms', None)
+        if cached_vms:
+            return cached_vms
+
+        res, code = get_cli(['vboxmanage', 'list', 'vms'])
+        if code != 0:
+            raise VirtualBoxException('No machines available.')
+
+        cached_vms = {}
+
+        if res:
+            matches = re.findall(r'\"([^\"]+)\" \{([^\}]+)\}', res)
+            for item in matches:
+                # name => uuid
+                cached_vms[item[0]] = item[1]
+
+        self.cache.setdefault('vms', cached_vms)
+
+        return cached_vms
+
+    def _clear_running_vms(self):
+        if 'runningvms' in self.cache:
+            del self.cache['runningvms']
+
+    def _list_running_vms(self):
+        cached_vms = self.cache.get('runningvms', None)
+        if cached_vms:
+            return cached_vms
+
+        res, code = get_cli(['vboxmanage', 'list', 'runningvms'])
+        if code != 0:
+            raise VirtualBoxException('No machines available.')
+
+        cached_vms = {}
+
+        if res:
+            matches = re.findall(r'\"([^\"]+)\" \{([^\}]+)\}', res)
+            for item in matches:
+                # name => uuid
+                cached_vms[item[0]] = item[1]
+
+        self.cache.setdefault('runningvms', cached_vms)
+
+        return cached_vms
+
+    def _clear_machine_info(self, name):
+        info = self.cache.get('info', None)
+        if info is None:
+            return
+
+        if name in info:
+            del info[name]
+
+    def _get_machine_info(self, name):
+        cached_info = self.cache.get('info', {}).get(name, None)
+        if cached_info:
+            return cached_info
+
+        res, code = get_cli(['vboxmanage', 'showvminfo', name, '--machinereadable'])
+        if code == 0:
+            parser = ConfigParser()
+            parser.read_string(unicode('[DEFAULT]\n'+res))
+
+            cached_info = {}
+            for item in parser.items('DEFAULT'):
+                cached_info[item[0].strip('"')] = item[1].strip('"')
+
+            self.cache.setdefault('info', {})
+            self.cache['info'].setdefault(name, cached_info)
+
+            return cached_info
+
+        raise VirtualBoxException('Machine not found.')
+
+    def _raise_exception(self, message, res):
+        print(res)
+        errors = re.findall(r'VBoxManage: error: ([^\n]+)', res)
+        if not errors:
+            raise VirtualBoxException(
+                '{0}: unknown error.'.format(message),
+            )
+
+        raise VirtualBoxException(
+            '{0}: {1}'.format(message, errors[0]),
+        )
