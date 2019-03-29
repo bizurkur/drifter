@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import os
 import sys
 
 import click
@@ -10,8 +11,10 @@ from drifter.commands import CommandLoader
 from drifter.config import Config
 from drifter.exceptions import DrifterException
 
-__version__ = '0.1.0'
-__author__ = 'Luke Kingsley'
+
+# load the version
+# pylint: disable=exec-used
+exec(open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'version.py')).read())
 
 
 def main():
@@ -21,13 +24,14 @@ def main():
     except KeyboardInterrupt as e:
         print()
     except DrifterException as e:
-        message = getattr(e, 'msg', e.message)
+        message = str(e)
         logging.error(click.style('ERROR: %s', bold=True, fg='red'), message)
         sys.exit(1)
 
 
 def run():
     """Run the drifter command."""
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
     config = Config()
     config.load_state()
 
@@ -41,20 +45,21 @@ def run():
         pass
 
     @click.group(invoke_without_command=True, cls=CommandLoader)
-    @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')
+    # pylint: disable=undefined-variable
+    @click.version_option(version=__version__, prog_name='Drifter', message='%(prog)s %(version)s')  # noqa: F821
     @click.pass_context
     def cli(ctx):
         """Create development machines with ease."""
         ctx.ensure_object(dict)
         ctx.obj['meta'] = {
-            'version': __version__,
-            'author': __author__,
+            # pylint: disable=undefined-variable
+            'version': __version__,  # noqa: F821
+            # pylint: disable=undefined-variable
+            'author': __author__,  # noqa: F821
         }
         ctx.obj['config'] = config
         ctx.obj['verbosity'] = 0
         ctx.obj['log_level'] = logging.INFO
-
-        logging.basicConfig(format='%(message)s', level=ctx.obj['log_level'])
 
         if ctx.invoked_subcommand:
             return

@@ -26,7 +26,7 @@ def up_command(ctx, config, name, provider, provision):
         return
 
     # Check for multi-machine setup
-    machines = config.get_default('machines', [])
+    machines = config.get_default('machines', {}).keys()
     if not machines:
         # Check for single machine setup
         name = config.get_default('name')

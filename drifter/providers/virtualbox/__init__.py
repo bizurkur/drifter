@@ -84,7 +84,7 @@ def _up_command(provider, config, name, provision, base, memory, head, mac, port
     try:
         _ensure_machine_exists(provider, config, name, base, _head, _memory, _mac, _ports)
     except ProviderException as e:
-        _destroy(provider, config, name, True)
+        _destroy(provider, config, name, True, False)
         raise e
 
     try:
@@ -101,7 +101,7 @@ def _up_command(provider, config, name, provision, base, memory, head, mac, port
     ports = ports or settings.get('network', {}).get('nat', {}).get('ports', _ports)
 
     logging.info('==> Starting machine...')
-    provider.start(head, memory, mac, ports)
+    provider.start(name, head, memory, mac, ports)
 
     _do_up_provision(provider, config, name, provision)
 
@@ -120,7 +120,7 @@ def _do_up_provision(provider, config, name, provision):
         return
 
     # Do provision
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
     while True:
         logging.info('==> Checking if SSH connection is alive...')
         res = base_ssh.do_ssh(config, [server], command='cd .', verbose=False)
@@ -140,11 +140,11 @@ def _ensure_machine_exists(provider, config, name, base, head, memory, mac, port
     logging.info('==> Importing base machine "%s"...', base)
 
     metadata = provider.get_base_metadata(base)
-    provider.create(name, metadata['os'])
+    data = provider.create(name, metadata['os'])
 
     config.add_machine(name, {
         'provider': 'virtualbox',
-        'id': provider.machine.id,
+        'id': data.get('uuid', None),
         'headless': not head,
         'memory': memory,
         'network': {
@@ -156,7 +156,7 @@ def _ensure_machine_exists(provider, config, name, base, head, memory, mac, port
     })
     config.save_state()
 
-    provider.clone_from(metadata['media'])
+    provider.clone_from(name, metadata['media'])
 
 
 def _resolve_up_args(config, name, base, head, memory, mac, ports):
@@ -208,7 +208,7 @@ def _provision(provider, config, name):
 
     provider.load_machine(name)
 
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
     provisioners = config.get_machine_default(name, 'provision', [])
 
     base_provision.do_provision(config, [server], provisioners)
@@ -233,8 +233,11 @@ def destroy(provider, config, name, force):
         _destroy(provider, config, machine, force)
 
 
-def _destroy(provider, config, name, force):
-    _require_machine(config, name)
+def _destroy(provider, config, name, force, require=True):
+    if require:
+        _require_machine(config, name)
+    elif not config.has_machine(name):
+        return
 
     if not force and not drifter.commands.confirm_destroy(name, False):
         return
@@ -242,7 +245,7 @@ def _destroy(provider, config, name, force):
     logging.info(click.style('Destroying machine "%s"...', bold=True), name)
 
     if provider.load_machine(name, True):
-        provider.destroy()
+        provider.destroy(name)
 
     config.remove_machine(name)
     if config.get_selected() == name:
@@ -271,7 +274,7 @@ def _halt(provider, config, name):
     logging.info(click.style('Halting machine "%s"...', bold=True), name)
 
     provider.load_machine(name)
-    provider.stop()
+    provider.stop(name)
 
 
 @virtualbox.command()
@@ -295,10 +298,10 @@ def _status(provider, config, name):
 
     output = [
         ['Name:', '{0} ({1})'.format(name, settings.get('provider', 'unknown'))],
-        ['Status:', 'Running' if provider.is_running() else 'Halted'],
+        ['Status:', 'Running' if provider.is_running(name) else 'Halted'],
     ]
 
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
     for forward in server['redirects']:
         output.append(['Ports:', '{0} (host) -> {1} (guest)'.format(forward['host_port'], forward['guest_port'])])
 
@@ -326,7 +329,7 @@ def ssh(ctx, provider, config, name, command):
 
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
 
     verbose = True
     if ctx.obj['verbosity'] < 0:
@@ -356,7 +359,7 @@ def rsync(ctx, provider, config, name, command):
 def _rsync(ctx, provider, config, name, command):
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
 
     logging.info(click.style('Rsyncing to machine "%s"...', bold=True), name)
 
@@ -385,7 +388,7 @@ def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
 
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data()
+    server = provider.get_server_data(name)
 
     verbose = True
     if ctx.obj['verbosity'] < 0:
@@ -405,5 +408,5 @@ def _require_running_machine(config, name, provider):
     _require_machine(config, name)
 
     provider.load_machine(name)
-    if not provider.is_running():
+    if not provider.is_running(name):
         raise VirtualBoxException('Machine is not in a started state.')

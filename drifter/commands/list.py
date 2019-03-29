@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 
 import click
 
+import six
+
 import drifter.commands
 from drifter.exceptions import InvalidArgumentException
 
@@ -26,7 +28,7 @@ def list_command(config, select, no_select):
     click.echo('')
 
     selected = config.get_selected()
-    for i in xrange(len(machines)):
+    for i in six.moves.range(len(machines)):
         name = machines[i]
         provider = config.get_machine(machines[i]).get('provider', 'unknown')
         if name == selected:

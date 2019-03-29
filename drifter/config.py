@@ -9,6 +9,8 @@ import sys
 
 import click
 
+import six
+
 import yaml
 
 from drifter.exceptions import GenericException, InvalidArgumentException
@@ -48,7 +50,7 @@ class Config(object):
             return
 
         try:
-            with io.open(path, 'r') as handle:
+            with io.open(path, 'r', encoding='utf-8') as handle:
                 self.state = json.load(handle)
         except IOError:
             logging.error(
@@ -80,7 +82,10 @@ class Config(object):
         filename = self.get_state_path()
         with io.open(filename, 'w', encoding='utf-8') as handle:
             data = json.dumps(self.state, sort_keys=True, indent=4, separators=(',', ': '))
-            handle.write(unicode(data))
+            if six.PY2:
+                handle.write(unicode(data))
+            else:
+                handle.write(data)
 
     def add_machine(self, name, settings):
         """Add a machine."""
@@ -110,7 +115,7 @@ class Config(object):
 
         Optionally, machines can be limited to a specific provider.
         """
-        machines = self.state['machines'].keys()
+        machines = list(self.state['machines'].keys())
         if not provider:
             return machines
 
@@ -183,7 +188,7 @@ class Config(object):
             return
 
         try:
-            with io.open(path, 'r') as handle:
+            with io.open(path, 'r', encoding='utf-8') as handle:
                 self.defaults = yaml.safe_load(handle)
         except IOError:
             raise GenericException(
