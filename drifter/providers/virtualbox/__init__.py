@@ -32,7 +32,9 @@ def virtualbox(ctx):
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
 @drifter.commands.provision_option
-@click.option('--base', help='Machine to use as the base.')
+@click.option('--base', help='Machine to use as the base.', type=click.Path(
+              exists=True, file_okay=False, dir_okay=True, writable=False,
+              readable=True, resolve_path=True, allow_dash=False))
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
 @click.option('--ports', help='Ports to forward.')
@@ -309,7 +311,7 @@ def _status(provider, config, name):
 
     longest_output_key = max(len(x[0]) for x in output)
     for entry in output:
-        click.echo('    {0:{1}}  {2}'.format(entry[0], longest_output_key, entry[1]))
+        click.echo('  {0:{1}}  {2}'.format(entry[0], longest_output_key, entry[1]))
 
     click.echo('')
 

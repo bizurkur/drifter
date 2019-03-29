@@ -101,7 +101,8 @@ def provider_option(func):
 
 def command_option(func):
     """Add a command option."""
-    return click.option('-c', '--command', metavar='COMMAND', help='Command to run after.')(func)
+    return click.option('-c', '--command', metavar='COMMAND',
+                        help='Command to run remotely after operation is complete.')(func)
 
 
 def confirm_destroy(name, abort=True):
