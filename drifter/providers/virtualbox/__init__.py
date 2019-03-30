@@ -33,8 +33,8 @@ def virtualbox(ctx):
 @drifter.commands.verbosity_options
 @drifter.commands.provision_option
 @click.option('--base', help='Machine to use as the base.', type=click.Path(
-              exists=True, file_okay=False, dir_okay=True, writable=False,
-              readable=True, resolve_path=True, allow_dash=False))
+    exists=True, file_okay=False, dir_okay=True, writable=False,
+    readable=True, resolve_path=True, allow_dash=False))
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
 @click.option('--ports', help='Ports to forward.')
