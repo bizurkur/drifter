@@ -11,8 +11,9 @@ from drifter.exceptions import InvalidArgumentException
 
 @click.command(name='list')
 @drifter.commands.verbosity_options
-@click.option('--select', help='Selects a machine')
-@click.option('--no-select', help='Selects no machines', is_flag=True)
+@click.option('--select', help='Selects a machine. In a multi-machine setup, the '
+              + 'selected machine will be used for commands.', metavar='NAME_OR_NUMBER')
+@click.option('--no-select', help='Selects no machine.', is_flag=True)
 @drifter.commands.pass_config
 def list_command(config, select, no_select):
     """List available machines."""

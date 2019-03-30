@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function
 
 import subprocess
 
-import six
-
 
 def get_cli(cmd, output=False):
     """Execute a command and return the response."""

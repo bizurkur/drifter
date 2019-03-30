@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import os
-from time import sleep
+from time import gmtime, sleep, strftime
 
 import click
 
@@ -32,7 +32,9 @@ def virtualbox(ctx):
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
 @drifter.commands.provision_option
-@click.option('--base', help='Machine to use as the base.')
+@click.option('--base', help='Machine to use as the base.', type=click.Path(
+    exists=True, file_okay=False, dir_okay=True, writable=False,
+    readable=True, resolve_path=True, allow_dash=False))
 @click.option('--memory', help='Amount of memory to use.', type=click.INT)
 @click.option('--mac', help='MAC address to use.')
 @click.option('--ports', help='Ports to forward.')
@@ -53,7 +55,7 @@ def up_command(provider, config, name, provision, base, memory, head, mac, ports
     provider_machines = config.list_machines('virtualbox')
 
     # Check for multi-machine setup
-    machines = config.get_default('machines', [])
+    machines = config.get_default('machines', {}).keys()
     if not machines:
         # Check for single machine setup
         name = config.get_default('name')
@@ -101,7 +103,8 @@ def _up_command(provider, config, name, provision, base, memory, head, mac, port
     ports = ports or settings.get('network', {}).get('nat', {}).get('ports', _ports)
 
     logging.info('==> Starting machine...')
-    provider.start(name, head, memory, mac, ports)
+    real_name = _get_machine_name(config, name)
+    provider.start(real_name, head, memory, mac, ports)
 
     _do_up_provision(provider, config, name, provision)
 
@@ -120,7 +123,8 @@ def _do_up_provision(provider, config, name, provision):
         return
 
     # Do provision
-    server = provider.get_server_data(name)
+    real_name = _get_machine_name(config, name)
+    server = provider.get_server_data(real_name)
     while True:
         logging.info('==> Checking if SSH connection is alive...')
         res = base_ssh.do_ssh(config, [server], command='cd .', verbose=False)
@@ -133,16 +137,18 @@ def _do_up_provision(provider, config, name, provision):
 
 def _ensure_machine_exists(provider, config, name, base, head, memory, mac, ports):
     """Create a machine, if it doesn't already exist."""
-    if provider.load_machine(name, True):
+    real_name = _get_machine_name(config, name)
+    if provider.load_machine(real_name, True):
         return
 
     # Create it if it doesn't exist
     logging.info('==> Importing base machine "%s"...', base)
 
     metadata = provider.get_base_metadata(base)
-    data = provider.create(name, metadata['os'])
+    data = provider.create(real_name, metadata['os'])
 
     config.add_machine(name, {
+        'name': real_name,
         'provider': 'virtualbox',
         'id': data.get('uuid', None),
         'headless': not head,
@@ -156,7 +162,7 @@ def _ensure_machine_exists(provider, config, name, base, head, memory, mac, port
     })
     config.save_state()
 
-    provider.clone_from(name, metadata['media'])
+    provider.clone_from(real_name, metadata['media'])
 
 
 def _resolve_up_args(config, name, base, head, memory, mac, ports):
@@ -206,9 +212,10 @@ def _provision(provider, config, name):
 
     logging.info(click.style('Provisioning machine "%s"...', bold=True), name)
 
-    provider.load_machine(name)
+    real_name = _get_machine_name(config, name)
+    provider.load_machine(real_name)
 
-    server = provider.get_server_data(name)
+    server = provider.get_server_data(real_name)
     provisioners = config.get_machine_default(name, 'provision', [])
 
     base_provision.do_provision(config, [server], provisioners)
@@ -244,8 +251,9 @@ def _destroy(provider, config, name, force, require=True):
 
     logging.info(click.style('Destroying machine "%s"...', bold=True), name)
 
-    if provider.load_machine(name, True):
-        provider.destroy(name)
+    real_name = _get_machine_name(config, name)
+    if provider.load_machine(real_name, True):
+        provider.destroy(real_name)
 
     config.remove_machine(name)
     if config.get_selected() == name:
@@ -273,8 +281,9 @@ def _halt(provider, config, name):
 
     logging.info(click.style('Halting machine "%s"...', bold=True), name)
 
-    provider.load_machine(name)
-    provider.stop(name)
+    real_name = _get_machine_name(config, name)
+    provider.load_machine(real_name)
+    provider.stop(real_name)
 
 
 @virtualbox.command()
@@ -294,14 +303,15 @@ def status(provider, config, name):
 
 def _status(provider, config, name):
     settings = config.get_machine(name)
-    provider.load_machine(name)
+    real_name = _get_machine_name(config, name)
+    provider.load_machine(real_name)
 
     output = [
         ['Name:', '{0} ({1})'.format(name, settings.get('provider', 'unknown'))],
-        ['Status:', 'Running' if provider.is_running(name) else 'Halted'],
+        ['Status:', 'Running' if provider.is_running(real_name) else 'Halted'],
     ]
 
-    server = provider.get_server_data(name)
+    server = provider.get_server_data(real_name)
     for forward in server['redirects']:
         output.append(['Ports:', '{0} (host) -> {1} (guest)'.format(forward['host_port'], forward['guest_port'])])
 
@@ -309,7 +319,7 @@ def _status(provider, config, name):
 
     longest_output_key = max(len(x[0]) for x in output)
     for entry in output:
-        click.echo('    {0:{1}}  {2}'.format(entry[0], longest_output_key, entry[1]))
+        click.echo('  {0:{1}}  {2}'.format(entry[0], longest_output_key, entry[1]))
 
     click.echo('')
 
@@ -329,7 +339,8 @@ def ssh(ctx, provider, config, name, command):
 
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data(name)
+    real_name = _get_machine_name(config, name)
+    server = provider.get_server_data(real_name)
 
     verbose = True
     if ctx.obj['verbosity'] < 0:
@@ -359,7 +370,8 @@ def rsync(ctx, provider, config, name, command):
 def _rsync(ctx, provider, config, name, command):
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data(name)
+    real_name = _get_machine_name(config, name)
+    server = provider.get_server_data(real_name)
 
     logging.info(click.style('Rsyncing to machine "%s"...', bold=True), name)
 
@@ -388,7 +400,8 @@ def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
 
     _require_running_machine(config, name, provider)
 
-    server = provider.get_server_data(name)
+    real_name = _get_machine_name(config, name)
+    server = provider.get_server_data(real_name)
 
     verbose = True
     if ctx.obj['verbosity'] < 0:
@@ -407,6 +420,20 @@ def _require_machine(config, name):
 def _require_running_machine(config, name, provider):
     _require_machine(config, name)
 
-    provider.load_machine(name)
-    if not provider.is_running(name):
+    real_name = _get_machine_name(config, name)
+    provider.load_machine(real_name)
+    if not provider.is_running(real_name):
         raise VirtualBoxException('Machine is not in a started state.')
+
+
+def _get_machine_name(config, name):
+    """Get the real name of the machine."""
+    if config.has_machine(name):
+        settings = config.get_machine(name)
+
+        return settings.get('name', name)
+
+    project = os.path.basename(config.base_dir.rstrip(os.sep))
+    timestamp = strftime('%H%M%S', gmtime())
+
+    return '{0}_{1}_{2}'.format(project, name, timestamp)

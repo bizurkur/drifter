@@ -55,6 +55,9 @@ def _up_command(ctx, config, name, provider, provision):
     if not provider:
         provider = machine_provider
 
+    if not isinstance(provider, str):
+        raise GenericException('Provider must be a string; {0} given.'.format(type(provider)))
+
     if config.has_machine(name):
         current_provider = config.get_machine(name).get('provider', '')
         if current_provider != provider:

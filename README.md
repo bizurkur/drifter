@@ -106,7 +106,7 @@ The `help` command prints out the available commands and providers, as well as v
 
 ## `list` Command
 
-The `list` command lists the available machines, including both started and non-started machines.
+The `list` command lists all available machines, including both running and halted machines.
 
 ### Options
 
