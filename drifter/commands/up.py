@@ -31,7 +31,8 @@ def up_command(ctx, config, name, provider, provision):
         # Check for single machine setup
         name = config.get_default('name')
         if not name:
-            drifter.commands.no_machine_warning()
+            click.echo(ctx.get_help())
+            ctx.exit()
         machines = [name]
 
     # Add machines from state file
