@@ -15,6 +15,13 @@ This is not intended as a 1-to-1 replacement for Vagrant. This is not a port fro
 
 Vagrant is awesome and already does this - so why bother? On my computer Vagrant runs extremely slow - we're talking 30+ seconds to *start* a command. I don't know why it's so slow (maybe it's my computer), but the speed is not satisfactory to me. It hinders my ability to get work done and I don't like waiting forever to rsync something as simple as a single-line CSS change.
 
+- [Installation](#installation)
+- [Usage](#usage)
+- [Commands](#commands)
+- [Plugins](#plugins)
+- [Creating a Base Machine](#creating-a-base-machine)
+- [Autocompletion](#autocompletion)
+
 
 # Installation
 
@@ -546,6 +553,55 @@ The `--quiet` option decreases the verbosity of the command. Multiple instances 
 ##### `--verbose`, `-v`
 
 The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
+
+----
+
+# Plugins
+
+Drifter supports creating plugins for adding any additional commands you may need.
+
+## Creating a Plugin
+
+To create a plugin, add your sub-commands or sub-groups to the entry point `drifter.plugins` in your `setup.py`.
+
+```python
+from setuptools import setup
+
+setup(
+    name='test_plugin',
+    version='0.1',
+    packages=['test_plugin'],
+    install_requires=[
+        'click',
+    ],
+    entry_points='''
+        [drifter.plugins]
+        foo=test_plugin.cli:foo
+        bar=test_plugin.cli:bar
+    ''',
+)
+```
+
+Then make sure to tag the methods as [Click](https://click.palletsprojects.com/) commands.
+
+```python
+# test_plugin/cli.py
+"""Example plugin that does nothing."""
+
+import click
+
+@click.command()
+def foo():
+    """This is foo"""
+    print('You called foo')
+
+@click.command()
+def bar():
+    """This is bar"""
+    print('You called bar')
+```
+
+See the [example plugins](examples/plugins/) for more context.
 
 ----
 
