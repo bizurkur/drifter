@@ -9,6 +9,8 @@ from functools import update_wrapper
 
 import click
 
+from pkg_resources import iter_entry_points
+
 from drifter.providers import get_providers
 
 
@@ -132,12 +134,21 @@ def get_commands():
     return commands
 
 
+def get_plugins():
+    """Get available plugins."""
+    plugins = {}
+    for entry_point in iter_entry_points('drifter.plugins'):
+        plugins[entry_point.name] = entry_point
+
+    return plugins
+
+
 class CommandLoader(click.MultiCommand):
     """Load and display available commands."""
 
     def list_commands(self, ctx):
         """Display available commands."""
-        return get_commands() + get_providers()
+        return sorted(get_commands() + get_providers() + get_plugins().keys())
 
     def get_command(self, ctx, cmd_name):
         """Get a command to execute."""
@@ -145,11 +156,20 @@ class CommandLoader(click.MultiCommand):
 
         cmd = cmd_name.replace('-', '_')
 
+        # default to commands/
         folder = os.path.dirname(__file__)
         filename = os.path.join(folder, cmd + '.py')
         if not os.path.exists(filename):
+            # check for providers/
             filename = os.path.join(os.path.dirname(folder), 'providers', cmd, '__init__.py')
             if not os.path.exists(filename):
+                # check for plugins
+                plugins = get_plugins()
+                if cmd in plugins:
+                    return plugins[cmd].load()
+                if cmd_name in plugins:
+                    return plugins[cmd_name].load()
+
                 return None
 
         with open(filename) as handle:
