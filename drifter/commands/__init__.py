@@ -206,3 +206,44 @@ class CommandLoader(click.MultiCommand):
                 error_msg += '\n\nDid you mean one of these?\n    {0}'.format('\n    '.join(matches))
 
             raise click.exceptions.UsageError(error_msg, error.ctx)
+
+    def format_commands(self, ctx, formatter):
+        """Format the commands into different output groups."""
+        commands = []
+        for subcommand in sorted(get_commands() + get_plugins().keys()):
+            cmd = self.get_command(ctx, subcommand)
+            if cmd is None:
+                continue
+            if cmd.hidden:
+                continue
+
+            commands.append((subcommand, cmd))
+
+        self._format_commands(formatter, 'Commands', commands)
+
+        providers = []
+        for subcommand in get_providers():
+            cmd = self.get_command(ctx, subcommand)
+            if cmd is None:
+                continue
+            if cmd.hidden:
+                continue
+
+            providers.append((subcommand, cmd))
+
+        self._format_commands(formatter, 'Providers', providers)
+
+    def _format_commands(self, formatter, section, commands):
+        if not commands:
+            return
+
+        limit = formatter.width - 6 - max(len(cmd[0]) for cmd in commands)
+
+        rows = []
+        for subcommand, cmd in commands:
+            help_text = cmd.get_short_help_str(limit)
+            rows.append((subcommand, help_text))
+
+        if rows:
+            with formatter.section(section):
+                formatter.write_dl(rows)
