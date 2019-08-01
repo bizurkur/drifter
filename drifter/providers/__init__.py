@@ -10,6 +10,8 @@ import click
 from drifter.exceptions import ProviderException
 
 
+DEFAULT_PROVIDER = 'virtualbox'
+
 def pass_provider(func):
     """Pass the provider object into a command."""
     @click.pass_context

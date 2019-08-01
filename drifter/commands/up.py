@@ -4,8 +4,8 @@ from __future__ import absolute_import, division, print_function
 import click
 
 import drifter.commands
+import drifter.providers
 from drifter.exceptions import GenericException
-from drifter.providers import invoke_provider_context
 
 
 @click.command(name='up', context_settings={
@@ -47,10 +47,10 @@ def up_command(ctx, config, name, provider, provision):
 
 
 def _up_command(ctx, config, name, provider, provision):
-    # Precedence: machine-specific, CLI override, config default, 'virtualbox'
+    # Precedence: machine-specific, CLI override, config default, DEFAULT_PROVIDER
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
-        machine_provider = config.get_default('provider', 'virtualbox')
+        machine_provider = config.get_default('provider', drifter.providers.DEFAULT_PROVIDER)
 
     # If no provider given, use the detected one
     if not provider:
@@ -75,4 +75,4 @@ def _up_command(ctx, config, name, provider, provision):
     elif provision is False:
         args.append('--no-provision')
 
-    invoke_provider_context(ctx, machine_provider, [name] + args + ctx.args)
+    drifter.providers.invoke_provider_context(ctx, machine_provider, [name] + args + ctx.args)
