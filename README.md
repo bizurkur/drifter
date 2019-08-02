@@ -605,7 +605,7 @@ def up(config, name, provision):
     print('Do stuff')
 ```
 
-See the [full example provider](examples/provider/) for more context.
+See the [full example provider](examples/providers/) for more context.
 
 ----
 
