@@ -43,25 +43,25 @@ def up_command(ctx, config, name, provider, provision):
     for machine in machines:
         if not config.get_machine_default(machine, 'autostart', True):
             continue
-        _up_command(ctx, config, machine, provider, provision)
+        if provider and provider != config.get_machine_default(machine, 'provider', provider):
+            continue
+        _up_command(ctx, config, machine, provider, provision, True)
 
 
-def _up_command(ctx, config, name, provider, provision):
+def _up_command(ctx, config, name, provider, provision, detect_provider=False):
     # Precedence: machine-specific, CLI override, config default, DEFAULT_PROVIDER
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
         machine_provider = config.get_default('provider', drifter.providers.DEFAULT_PROVIDER)
 
-    # If no provider given, use the detected one
-    if not provider:
-        provider = machine_provider
-
-    if not isinstance(provider, str):
-        raise GenericException('Provider must be a string; {0} given.'.format(type(provider)))
+    if not isinstance(machine_provider, str):
+        raise GenericException('Provider must be a string; {0} given.'.format(type(machine_provider)))
 
     if config.has_machine(name):
         current_provider = config.get_machine(name).get('provider', '')
-        if current_provider != provider:
+        if detect_provider:
+            machine_provider = current_provider
+        elif current_provider != machine_provider:
             raise GenericException(
                 'Machine name "{0}" is already in use by the "{1}" provider.'.format(
                     name,
