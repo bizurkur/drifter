@@ -9,7 +9,7 @@ setup(
     ],
     entry_points='''
         [drifter.plugins]
-        foo=test_plugin.cli:foo
-        bar=test_plugin.cli:bar
+        foo=test_plugin:foo
+        bar=test_plugin:bar
     ''',
 )

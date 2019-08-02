@@ -17,6 +17,9 @@ from drifter.exceptions import ProviderException
 from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
 
+PROVIDER_NAME = 'virtualbox'
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def virtualbox(ctx):
@@ -52,7 +55,7 @@ def up_command(provider, config, name, provision, base, memory, head, mac, ports
     # 2. Find machines defined in config
     # 3. Start them all
 
-    provider_machines = config.list_machines('virtualbox')
+    provider_machines = config.list_machines(PROVIDER_NAME)
 
     # Check for multi-machine setup
     machines = config.get_default('machines', {}).keys()
@@ -65,7 +68,7 @@ def up_command(provider, config, name, provision, base, memory, head, mac, ports
     for machine in machines:
         if machine in provider_machines:
             continue
-        if config.get_machine_default(machine, 'provider', 'virtualbox') == 'virtualbox':
+        if config.get_machine_default(machine, 'provider', drifter.providers.DEFAULT_PROVIDER) == PROVIDER_NAME:
             provider_machines.append(machine)
 
     if not provider_machines:
@@ -149,7 +152,7 @@ def _ensure_machine_exists(provider, config, name, base, head, memory, mac, port
 
     config.add_machine(name, {
         'name': real_name,
-        'provider': 'virtualbox',
+        'provider': PROVIDER_NAME,
         'id': data.get('uuid', None),
         'headless': not head,
         'memory': memory,
@@ -203,7 +206,7 @@ def provision_command(provider, config, name):
         _provision(provider, config, name)
         return
 
-    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+    for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
         _provision(provider, config, machine)
 
 
@@ -236,7 +239,7 @@ def destroy(provider, config, name, force):
         _destroy(provider, config, name, force)
         return
 
-    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+    for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
         _destroy(provider, config, machine, force)
 
 
@@ -272,7 +275,7 @@ def halt(provider, config, name):
         _halt(provider, config, name)
         return
 
-    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+    for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
         _halt(provider, config, machine)
 
 
@@ -292,12 +295,12 @@ def _halt(provider, config, name):
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def status(provider, config, name):
-    """Get the status of a VitualBox machine."""
+    """Get the status of a VirtualBox machine."""
     if name:
         _status(provider, config, name)
         return
 
-    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+    for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
         _status(provider, config, machine)
 
 
@@ -334,7 +337,7 @@ def _status(provider, config, name):
 def ssh(ctx, provider, config, name, command):
     """Open a Secure Shell to a VirtualBox machine."""
     if not name:
-        machines = drifter.commands.list_machines(config, 'virtualbox')
+        machines = drifter.commands.list_machines(config, PROVIDER_NAME)
         name = machines.pop()
 
     _require_running_machine(config, name, provider)
@@ -363,7 +366,7 @@ def rsync(ctx, provider, config, name, command):
         _rsync(ctx, provider, config, name, command)
         return
 
-    for machine in drifter.commands.list_machines(config, 'virtualbox'):
+    for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
         _rsync(ctx, provider, config, machine, command)
 
 
@@ -387,15 +390,15 @@ def _rsync(ctx, provider, config, name, command):
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
 @drifter.commands.command_option
-@click.option('--run-once', help='Run command only once.', is_flag=True)
-@click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
+@drifter.commands.run_once_option
+@drifter.commands.burst_limit_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
 def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
     """Automatically rsync files to a VirtualBox machine."""
     if not name:
-        machines = drifter.commands.list_machines(config, 'virtualbox')
+        machines = drifter.commands.list_machines(config, PROVIDER_NAME)
         name = machines.pop()
 
     _require_running_machine(config, name, provider)

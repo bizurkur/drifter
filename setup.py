@@ -29,5 +29,7 @@ setup(
     entry_points='''
         [console_scripts]
         drifter=drifter.cli:main
+        [drifter.providers]
+        virtualbox=drifter.providers.virtualbox:virtualbox
     '''
 )

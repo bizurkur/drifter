@@ -40,6 +40,8 @@ def do_provision(config, servers, provisioners=None, verbose=True):
     """Provision the given servers."""
     if provisioners is None:
         provisioners = config.get_default('provision', [])
+    if not provisioners:
+        return
 
     for server in servers:
         for provisioner in provisioners:

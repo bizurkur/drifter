@@ -97,7 +97,7 @@ def provision_option(func):
 def provider_option(func):
     """Add a provider option."""
     return click.option('--provider', metavar='PROVIDER', help='Which provider to use.',
-                        type=click.Choice(get_providers()),
+                        type=click.Choice(get_providers().keys()),
                         default=os.environ.get('DRIFTER_PROVIDER'))(func)
 
 
@@ -105,6 +105,17 @@ def command_option(func):
     """Add a command option."""
     return click.option('-c', '--command', metavar='COMMAND',
                         help='Command to run remotely after operation is complete.')(func)
+
+
+def run_once_option(func):
+    """Add a run once option."""
+    return click.option('--run-once', help='Run command only once.', is_flag=True)(func)
+
+
+def burst_limit_option(func):
+    """Add a burst limit option."""
+    return click.option('--burst-limit', help='Number of simultaneous file changes to allow.',
+                        default=0, type=click.INT)(func)
 
 
 def confirm_destroy(name, abort=True):
@@ -148,29 +159,27 @@ class CommandLoader(click.MultiCommand):
 
     def list_commands(self, ctx):
         """Display available commands."""
-        return sorted(get_commands() + get_providers() + get_plugins().keys())
+        return sorted(get_commands() + get_providers().keys() + get_plugins().keys())
 
     def get_command(self, ctx, cmd_name):
         """Get a command to execute."""
-        namespace = {}
-
         cmd = cmd_name.replace('-', '_')
 
-        # default to commands/
+        command = self._get_command(cmd)
+        if not command:
+            command = self._get_provider(cmd, cmd_name)
+            if not command:
+                command = self._get_plugin(cmd, cmd_name)
+
+        return command
+
+    def _get_command(self, cmd):
+        namespace = {}
+
         folder = os.path.dirname(__file__)
         filename = os.path.join(folder, cmd + '.py')
         if not os.path.exists(filename):
-            # check for providers/
-            filename = os.path.join(os.path.dirname(folder), 'providers', cmd, '__init__.py')
-            if not os.path.exists(filename):
-                # check for plugins
-                plugins = get_plugins()
-                if cmd in plugins:
-                    return plugins[cmd].load()
-                if cmd_name in plugins:
-                    return plugins[cmd_name].load()
-
-                return None
+            return None
 
         with open(filename) as handle:
             code = compile(handle.read(), filename, 'exec')
@@ -183,6 +192,26 @@ class CommandLoader(click.MultiCommand):
         cmd = cmd + '_command'
         if cmd in namespace:
             return namespace[cmd]
+
+        return None
+
+    def _get_provider(self, cmd, cmd_name):
+        providers = get_providers()
+        if cmd in providers:
+            return providers[cmd].load()
+
+        if cmd_name in providers:
+            return providers[cmd_name].load()
+
+        return None
+
+    def _get_plugin(self, cmd, cmd_name):
+        plugins = get_plugins()
+        if cmd in plugins:
+            return plugins[cmd].load()
+
+        if cmd_name in plugins:
+            return plugins[cmd_name].load()
 
         return None
 
