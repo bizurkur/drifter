@@ -294,7 +294,7 @@ def _halt(provider, config, name):
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 def status(provider, config, name):
-    """Get the status of a VitualBox machine."""
+    """Get the status of a VirtualBox machine."""
     if name:
         _status(provider, config, name)
         return
