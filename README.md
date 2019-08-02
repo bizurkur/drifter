@@ -629,8 +629,8 @@ setup(
     ],
     entry_points='''
         [drifter.plugins]
-        foo=test_plugin.cli:foo
-        bar=test_plugin.cli:bar
+        foo=test_plugin:foo
+        bar=test_plugin:bar
     ''',
 )
 ```
@@ -638,7 +638,7 @@ setup(
 Then make sure to tag the methods as [Click](https://click.palletsprojects.com/) commands.
 
 ```python
-# test_plugin/cli.py
+# test_plugin/__init__.py
 """Example plugin that does nothing."""
 
 import click
