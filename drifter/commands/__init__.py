@@ -152,28 +152,22 @@ class CommandLoader(click.MultiCommand):
 
     def get_command(self, ctx, cmd_name):
         """Get a command to execute."""
-        namespace = {}
-
         cmd = cmd_name.replace('-', '_')
 
-        # default to commands/
+        command = self._get_command(cmd)
+        if not command:
+            command = self._get_provider(cmd, cmd_name)
+            if not command:
+                command = self._get_plugin(cmd, cmd_name)
+
+        return command
+
+    def _get_command(self, cmd):
+        namespace = {}
+
         folder = os.path.dirname(__file__)
         filename = os.path.join(folder, cmd + '.py')
         if not os.path.exists(filename):
-            # check for providers
-            providers = get_providers()
-            if cmd in providers:
-                return providers[cmd].load()
-            if cmd_name in providers:
-                return providers[cmd_name].load()
-
-            # check for plugins
-            plugins = get_plugins()
-            if cmd in plugins:
-                return plugins[cmd].load()
-            if cmd_name in plugins:
-                return plugins[cmd_name].load()
-
             return None
 
         with open(filename) as handle:
@@ -187,6 +181,26 @@ class CommandLoader(click.MultiCommand):
         cmd = cmd + '_command'
         if cmd in namespace:
             return namespace[cmd]
+
+        return None
+
+    def _get_provider(self, cmd, cmd_name):
+        providers = get_providers()
+        if cmd in providers:
+            return providers[cmd].load()
+
+        if cmd_name in providers:
+            return providers[cmd_name].load()
+
+        return None
+
+    def _get_plugin(self, cmd, cmd_name):
+        plugins = get_plugins()
+        if cmd in plugins:
+            return plugins[cmd].load()
+
+        if cmd_name in plugins:
+            return plugins[cmd_name].load()
 
         return None
 
@@ -226,7 +240,7 @@ class CommandLoader(click.MultiCommand):
         self._format_commands(formatter, 'Commands', commands)
 
         providers = []
-        for subcommand in get_providers().keys():
+        for subcommand in get_providers():
             cmd = self.get_command(ctx, subcommand)
             if cmd is None:
                 continue

@@ -19,6 +19,7 @@ from drifter.providers.virtualbox.provider import Provider, VirtualBoxException
 
 PROVIDER_NAME = 'virtualbox'
 
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def virtualbox(ctx):

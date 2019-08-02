@@ -1,9 +1,7 @@
 """Shared provider functions."""
 from __future__ import absolute_import, division, print_function
 
-import os
 from functools import update_wrapper
-from importlib import import_module
 
 import click
 
@@ -13,6 +11,7 @@ from drifter.exceptions import ProviderException
 
 
 DEFAULT_PROVIDER = 'virtualbox'
+
 
 def pass_provider(func):
     """Pass the provider object into a command."""
