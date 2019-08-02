@@ -18,6 +18,7 @@ Vagrant is awesome and already does this - so why bother? On my computer Vagrant
 - [Installation](#installation)
 - [Usage](#usage)
 - [Commands](#commands)
+- [Providers](#providers)
 - [Plugins](#plugins)
 - [Creating a Base Machine](#creating-a-base-machine)
 - [Autocompletion](#autocompletion)
@@ -310,6 +311,7 @@ The `--verbose` option increases the verbosity of the command. Multiple instance
 # Providers
 
 - [VirtualBox](#virtualbox)
+- [Make Your Own](#make-your-own)
 
 ## VirtualBox
 
@@ -553,6 +555,57 @@ The `--quiet` option decreases the verbosity of the command. Multiple instances 
 ##### `--verbose`, `-v`
 
 The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
+
+
+## Make Your Own
+
+To create your own provider, add your provider to the entry point `drifter.providers` in your `setup.py`.
+
+```python
+from setuptools import setup
+
+setup(
+    name='test_provider',
+    version='0.1',
+    packages=['test_provider'],
+    install_requires=[
+        'click',
+    ],
+    entry_points='''
+        [drifter.providers]
+        my-provider=test_provider:my_provider
+    ''',
+)
+```
+
+Then make sure to tag the main method (in this case `my_provider`) as a [Click](https://click.palletsprojects.com/) command group.
+
+```python
+# test_provider/__init__.py
+"""Example provider that does nothing."""
+
+import click
+
+import drifter.commands
+
+@click.group(invoke_without_command=True)
+@click.pass_context
+def my_provider(ctx):
+    """Example provider."""
+    if not ctx.invoked_subcommand:
+        click.echo(ctx.get_help())
+
+
+@my_provider.command()
+@drifter.commands.name_argument
+@drifter.commands.verbosity_options
+@drifter.commands.provision_option
+@drifter.commands.pass_config
+def up(config, name, provision):
+    print('Do stuff')
+```
+
+See the [full example provider](examples/provider/) for more context.
 
 ----
 
