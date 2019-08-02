@@ -97,7 +97,7 @@ def provision_option(func):
 def provider_option(func):
     """Add a provider option."""
     return click.option('--provider', metavar='PROVIDER', help='Which provider to use.',
-                        type=click.Choice(get_providers()),
+                        type=click.Choice(get_providers().keys()),
                         default=os.environ.get('DRIFTER_PROVIDER'))(func)
 
 
@@ -148,7 +148,7 @@ class CommandLoader(click.MultiCommand):
 
     def list_commands(self, ctx):
         """Display available commands."""
-        return sorted(get_commands() + get_providers() + get_plugins().keys())
+        return sorted(get_commands() + get_providers().keys() + get_plugins().keys())
 
     def get_command(self, ctx, cmd_name):
         """Get a command to execute."""
@@ -160,17 +160,21 @@ class CommandLoader(click.MultiCommand):
         folder = os.path.dirname(__file__)
         filename = os.path.join(folder, cmd + '.py')
         if not os.path.exists(filename):
-            # check for providers/
-            filename = os.path.join(os.path.dirname(folder), 'providers', cmd, '__init__.py')
-            if not os.path.exists(filename):
-                # check for plugins
-                plugins = get_plugins()
-                if cmd in plugins:
-                    return plugins[cmd].load()
-                if cmd_name in plugins:
-                    return plugins[cmd_name].load()
+            # check for providers
+            providers = get_providers()
+            if cmd in providers:
+                return providers[cmd].load()
+            if cmd_name in providers:
+                return providers[cmd_name].load()
 
-                return None
+            # check for plugins
+            plugins = get_plugins()
+            if cmd in plugins:
+                return plugins[cmd].load()
+            if cmd_name in plugins:
+                return plugins[cmd_name].load()
+
+            return None
 
         with open(filename) as handle:
             code = compile(handle.read(), filename, 'exec')
@@ -222,7 +226,7 @@ class CommandLoader(click.MultiCommand):
         self._format_commands(formatter, 'Commands', commands)
 
         providers = []
-        for subcommand in get_providers():
+        for subcommand in get_providers().keys():
             cmd = self.get_command(ctx, subcommand)
             if cmd is None:
                 continue

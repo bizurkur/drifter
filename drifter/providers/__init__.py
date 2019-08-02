@@ -7,6 +7,8 @@ from importlib import import_module
 
 import click
 
+from pkg_resources import iter_entry_points
+
 from drifter.exceptions import ProviderException
 
 
@@ -24,33 +26,24 @@ def pass_provider(func):
 
 def get_providers():
     """Get a list of available providers."""
-    providers = []
-    folder = os.path.dirname(__file__)
-    for provider in os.listdir(folder):
-        provider_folder = os.path.join(folder, provider)
-        init = os.path.join(folder, provider, '__init__.py')
-        if os.path.isdir(provider_folder) and os.path.exists(init):
-            providers.append(provider)
-
-    providers.sort()
+    providers = {}
+    for entry_point in iter_entry_points('drifter.providers'):
+        providers[entry_point.name] = entry_point
 
     return providers
 
 
 def get_provider(provider):
     """Get the given provider module."""
-    try:
-        module = import_module('drifter.providers.{0}'.format(provider), package=__name__)
-    except ImportError as e:
-        raise ProviderException(
-            'Provider "{0}" is invalid: {1}'.format(provider, str(e)),
-        )
+    providers = get_providers()
 
-    cmd = getattr(module, provider, None)
-    if not cmd:
-        raise ProviderException(
-            'Provider "{0}" does not define a subcommand.'.format(provider),
-        )
+    clean_name = provider.replace('-', '_')
+    if clean_name in providers:
+        cmd = providers[clean_name].load()
+    elif provider in providers:
+        cmd = providers[provider].load()
+    else:
+        raise ProviderException('Provider "{0}" is invalid'.format(provider))
 
     if not isinstance(cmd, click.core.Group):
         raise ProviderException(
