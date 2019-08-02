@@ -107,6 +107,17 @@ def command_option(func):
                         help='Command to run remotely after operation is complete.')(func)
 
 
+def run_once_option(func):
+    """Add a run once option."""
+    return click.option('--run-once', help='Run command only once.', is_flag=True)(func)
+
+
+def burst_limit_option(func):
+    """Add a burst limit option."""
+    return click.option('--burst-limit', help='Number of simultaneous file changes to allow.',
+                        default=0, type=click.INT)(func)
+
+
 def confirm_destroy(name, abort=True):
     """Confirm the user wants to destroy the machine."""
     return click.confirm('Are you sure you want to destroy the "{0}" machine?'.format(name), abort=abort)

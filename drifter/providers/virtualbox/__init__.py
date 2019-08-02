@@ -390,8 +390,8 @@ def _rsync(ctx, provider, config, name, command):
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
 @drifter.commands.command_option
-@click.option('--run-once', help='Run command only once.', is_flag=True)
-@click.option('--burst-limit', help='Number of simultaneous file changes to allow.', default=0, type=click.INT)
+@drifter.commands.run_once_option
+@drifter.commands.burst_limit_option
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
 @click.pass_context
