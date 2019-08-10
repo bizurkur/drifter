@@ -53,7 +53,7 @@ def _up_command(ctx, config, name, provider, provision, provision_with, detect_p
     # Precedence: machine-specific, CLI override, config default, DEFAULT_PROVIDER
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
-        machine_provider = config.get_default('provider', drifter.providers.DEFAULT_PROVIDER)
+        machine_provider = config.get_default('provider', drifter.providers.get_default_provider())
 
     if not isinstance(machine_provider, str):
         raise GenericException('Provider must be a string; {0} given.'.format(type(machine_provider)))

@@ -71,7 +71,7 @@ def up_command(provider, config, name, provision, provision_with, base, memory,
     for machine in machines:
         if machine in provider_machines:
             continue
-        if config.get_machine_default(machine, 'provider', drifter.providers.DEFAULT_PROVIDER) == PROVIDER_NAME:
+        if config.get_machine_default(machine, 'provider', drifter.providers.get_default_provider()) == PROVIDER_NAME:
             provider_machines.append(machine)
 
     if not provider_machines:
