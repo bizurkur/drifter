@@ -298,6 +298,10 @@ drifter up
 
 The `--provision` and `--no-provision` options determine whether or not to provision the machine after it comes up. By default, it will only provision a machine if it hasn't already been provisioned.
 
+#### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
+
 #### `--quiet`, `-q`
 
 The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
@@ -525,6 +529,14 @@ The `up` command brings machines up and gets them running. This may involve crea
 The `name` argument specifies the name of the machine to bring up.
 
 #### Options
+
+##### `--provision`, `--no-provision`
+
+The `--provision` and `--no-provision` options determine whether or not to provision the machine after it comes up. By default, it will only provision a machine if it hasn't already been provisioned.
+
+##### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
 
 ##### `--base`
 

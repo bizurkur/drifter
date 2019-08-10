@@ -35,6 +35,7 @@ def virtualbox(ctx):
 @drifter.commands.name_argument
 @drifter.commands.verbosity_options
 @drifter.commands.provision_option
+@drifter.commands.provision_with_option
 @click.option('--base', help='Machine to use as the base.', type=click.Path(
     exists=True, file_okay=False, dir_okay=True, writable=False,
     readable=True, resolve_path=True, allow_dash=False))
@@ -44,11 +45,13 @@ def virtualbox(ctx):
 @click.option('--head/--no-head', help='Whether or not to run the VM with a head.', is_flag=True, default=None)
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def up_command(provider, config, name, provision, base, memory, head, mac, ports):
+def up_command(provider, config, name, provision, provision_with, base, memory,
+               head, mac, ports):
     """Bring up a VirtualBox machine."""
     # Start the named machine only
     if name:
-        _up_command(provider, config, name, provision, base, memory, head, mac, ports)
+        _up_command(provider, config, name, provision, provision_with, base,
+                    memory, head, mac, ports)
         return
 
     # 1. Find machines defined in state file
@@ -77,10 +80,12 @@ def up_command(provider, config, name, provision, base, memory, head, mac, ports
     for machine in provider_machines:
         if not config.get_machine_default(machine, 'autostart', True):
             continue
-        _up_command(provider, config, machine, provision, base, memory, head, mac, ports)
+        _up_command(provider, config, machine, provision, provision_with, base,
+                    memory, head, mac, ports)
 
 
-def _up_command(provider, config, name, provision, base, memory, head, mac, ports):
+def _up_command(provider, config, name, provision, provision_with, base, memory,
+                head, mac, ports):
     base, _head, _memory, _mac, _ports = _resolve_up_args(config, name, base,
                                                           memory, head, mac, ports)
 
@@ -109,10 +114,10 @@ def _up_command(provider, config, name, provision, base, memory, head, mac, port
     real_name = _get_machine_name(config, name)
     provider.start(real_name, head, memory, mac, ports)
 
-    _do_up_provision(provider, config, name, provision)
+    _do_up_provision(provider, config, name, provision, provision_with)
 
 
-def _do_up_provision(provider, config, name, provision):
+def _do_up_provision(provider, config, name, provision, provision_with):
     """Execute provision, if applicable."""
     # Do not provision
     if provision is False:
@@ -135,7 +140,7 @@ def _do_up_provision(provider, config, name, provision):
             break
         sleep(10)
 
-    _provision(provider, config, name)
+    _provision(provider, config, name, provision_with)
 
 
 def _ensure_machine_exists(provider, config, name, base, head, memory, mac, ports):
@@ -197,20 +202,21 @@ def _resolve_up_args(config, name, base, head, memory, mac, ports):
 
 @virtualbox.command(name='provision')
 @drifter.commands.name_argument
+@drifter.commands.provision_with_option
 @drifter.commands.verbosity_options
 @drifter.commands.pass_config
 @drifter.providers.pass_provider
-def provision_command(provider, config, name):
+def provision_command(provider, config, name, provision_with):
     """Provision a VirtualBox machine."""
     if name:
-        _provision(provider, config, name)
+        _provision(provider, config, name, provision_with)
         return
 
     for machine in drifter.commands.list_machines(config, PROVIDER_NAME):
-        _provision(provider, config, machine)
+        _provision(provider, config, machine, provision_with)
 
 
-def _provision(provider, config, name):
+def _provision(provider, config, name, provision_with=None):
     _require_machine(config, name)
 
     logging.info(click.style('Provisioning machine "%s"...', bold=True), name)
@@ -221,7 +227,9 @@ def _provision(provider, config, name):
     server = provider.get_server_data(real_name)
     provisioners = config.get_machine_default(name, 'provision', [])
 
-    base_provision.do_provision(config, [server], provisioners)
+    base_provision.do_provision(config=config, servers=[server],
+                                provisioners=provisioners,
+                                provision_with=provision_with)
 
     config.get_machine(name)['provisioned'] = True
     config.save_state()

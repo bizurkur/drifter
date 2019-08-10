@@ -16,27 +16,28 @@ from drifter.provisioners import get_provisioners
     'allow_extra_args': True,
 })
 @drifter.commands.name_argument
+@drifter.commands.provision_with_option
 @drifter.commands.verbosity_options
 @drifter.commands.pass_config
 @click.pass_context
-def provision(ctx, config, name):
+def provision(ctx, config, name, provision_with):
     """Provision a machine."""
     # Provision the named machine only
     if name:
-        _provision(ctx, config, name)
+        _provision(ctx, config, name, provision_with)
         return
 
     # Provision all machines
     for machine in drifter.commands.list_machines(config):
-        _provision(ctx, config, machine)
+        _provision(ctx, config, machine, provision_with)
 
 
-def _provision(ctx, config, name):
+def _provision(ctx, config, name, provision_with):
     provider = config.get_provider(name)
-    invoke_provider_context(ctx, provider, [name] + ctx.args)
+    invoke_provider_context(ctx, provider, [name, '--provision-with', provision_with] + ctx.args)
 
 
-def do_provision(config, servers, provisioners=None, verbose=True):
+def do_provision(config, servers, provisioners=None, provision_with=None, verbose=True):
     """Provision the given servers."""
     if provisioners is None:
         provisioners = config.get_default('provision', [])
@@ -49,6 +50,12 @@ def do_provision(config, servers, provisioners=None, verbose=True):
         for provisioner in provisioners:
             kind = provisioner.get('type', None)
             name = provisioner.get('name', kind)
+
+            if provision_with is not None \
+                    and provision_with != kind \
+                    and provision_with != name:
+                # Only run a specific provisioner name or type
+                continue
 
             if kind not in privisioner_map:
                 raise GenericException(

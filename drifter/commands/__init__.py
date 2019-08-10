@@ -94,6 +94,13 @@ def provision_option(func):
                         is_flag=True, default=None)(func)
 
 
+def provision_with_option(func):
+    """Add a provision-with option."""
+    return click.option('--provision-with',
+                        help='Specific provisioner to run on the machine.',
+                        default=None)(func)
+
+
 def provider_option(func):
     """Add a provider option."""
     return click.option('--provider', metavar='PROVIDER', help='Which provider to use.',
