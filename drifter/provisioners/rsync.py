@@ -4,13 +4,13 @@ from __future__ import absolute_import, division, print_function
 import drifter.commands.rsync as base_rsync
 
 
-def run(config, servers, provisioner, verbose=True):
+def rsync(config, servers, settings, verbose=True):
     """Run the rsync provisioner."""
-    local_path = provisioner.get('local', None)
-    remote_path = provisioner.get('remote', None)
-    exclude = provisioner.get('exclude', None)
-    include = provisioner.get('include', None)
-    args = provisioner.get('args', None)
+    local_path = settings.get('local', None)
+    remote_path = settings.get('remote', None)
+    exclude = settings.get('exclude', None)
+    include = settings.get('include', None)
+    args = settings.get('args', None)
 
     base_rsync.do_rsync(config, servers, verbose=verbose,
                         local_path=local_path, remote_path=remote_path,

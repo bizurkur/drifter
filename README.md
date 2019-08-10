@@ -19,6 +19,7 @@ Vagrant is awesome and already does this - so why bother? On my computer Vagrant
 - [Usage](#usage)
 - [Commands](#commands)
 - [Providers](#providers)
+- [Provisioners](#provisioners)
 - [Plugins](#plugins)
 - [Creating a Base Machine](#creating-a-base-machine)
 - [Autocompletion](#autocompletion)
@@ -143,6 +144,8 @@ The `--verbose` option increases the verbosity of the command. Multiple instance
 
 The `provision` command provisions a machine for use. This can include copying files, running programs, or executing scripts.
 
+See the [Provisioners](#provisioners) section for more information.
+
 ### Arguments
 
 #### `name`
@@ -151,6 +154,10 @@ The `name` argument specifies the name of the machine to provision.
 
 ### Options
 
+#### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
+
 #### `--quiet`, `-q`
 
 The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
@@ -158,20 +165,6 @@ The `--quiet` option decreases the verbosity of the command. Multiple instances 
 #### `--verbose`, `-v`
 
 The `--verbose` option increases the verbosity of the command. Multiple instances of this option are supported. Each instance will increase the verbosity by 1, e.g. `-vvv` will increase the verbosity by 3.
-
-### Provisioners
-
-#### `rsync`
-
-The `rsync` provisioner copies files to the machine. Multiple rsync provisioners can be set up to sync different local paths to different remote paths.
-
-TODO: Finish this.
-
-#### `shell`
-
-The `shell` provisioner executes programs or scripts.
-
-TODO: Finish this.
 
 ## `rsync` Command
 
@@ -298,6 +291,10 @@ drifter up
 
 The `--provision` and `--no-provision` options determine whether or not to provision the machine after it comes up. By default, it will only provision a machine if it hasn't already been provisioned.
 
+#### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
+
 #### `--quiet`, `-q`
 
 The `--quiet` option decreases the verbosity of the command. Multiple instances of this option are supported. Each instance will decrease the verbosity by 1, e.g. `-qqq` will decrease the verbosity by 3.
@@ -384,6 +381,10 @@ The `provision` command provisions a machine for use. This can include copying f
 The `name` argument specifies the name of the machine to provision.
 
 #### Options
+
+##### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
 
 ##### `--quiet`, `-q`
 
@@ -526,6 +527,14 @@ The `name` argument specifies the name of the machine to bring up.
 
 #### Options
 
+##### `--provision`, `--no-provision`
+
+The `--provision` and `--no-provision` options determine whether or not to provision the machine after it comes up. By default, it will only provision a machine if it hasn't already been provisioned.
+
+##### `--provision-with`
+
+The `--provision-with` option allows you to limit a specific provisioner name or type to be ran. For example, `--provision-with rsync` will only run rsync provisioners.
+
 ##### `--base`
 
 The `--base` option allows for specifying which machine to import as the base. For now, this expects to be given a full path to the directory of an existing virtual machine. The base machine should include the operating system and any other required software. See the "Creating a Base Machine" section for more details.
@@ -606,6 +615,133 @@ def up(config, name, provision):
 ```
 
 See the [full example provider](examples/providers/) for more context.
+
+----
+
+# Provisioners
+
+- [Rsync](#rsync)
+- [Shell](#shell)
+- [Make Your Own](#make-your-own-1)
+
+## `rsync`
+
+The `rsync` provisioner copies files to the machine. Multiple rsync provisioners can be set up to sync different local paths to different remote paths.
+
+TODO: Finish this.
+
+Example `drifter.yaml` settings:
+```yaml
+machines:
+    my_machine_name:
+        provision:
+            - type: rsync
+              # Where to get local files from
+              local: /dist
+              # Where to send remote files to
+              remote: /tmp
+              # List of files to exclude
+              exclude:
+                - ".*"
+                - "*.pyc"
+                - "build/"
+                - "dist/"
+                - "vendor/"
+              # List of files to include.
+              # This can be used to override excludes
+              include:
+                - ".example"
+              # Arguments to pass to the rsync command.
+              # The below ones are the defaults.
+              args: ["--archive", "--compress", "--delete", "--verbose", "--no-owner", "--no-group"]
+
+```
+
+When any of the rsync settings are missing, it will default to looking at the base rsync settings:
+```yaml
+machines:
+    my_machine_name:
+        provision:
+            - type: rsync
+
+rsync:
+    local: /
+    remote: /var/www/
+    exclude:
+        - ".*"
+        - "*.pyc"
+        - "build/"
+        - "dist/"
+        - "vendor/"
+    include:
+        - ".example"
+    args: ["--archive", "--compress", "--delete", "--verbose", "--no-owner", "--no-group"]
+
+```
+
+## `shell`
+
+The `shell` provisioner executes programs or scripts.
+
+TODO: Finish this.
+
+Example `drifter.yaml` settings:
+```yaml
+machines:
+    my_machine_name:
+        provision:
+            - type: shell
+              name: set hostname
+              inline: hostname testing
+              sudo: true
+            - type: shell
+              name: env inline
+              inline:
+                  echo "$SOME_KEY, $SOME_OTHER"
+                  && whoami
+                  && echo 'test'
+              env:
+                SOME_KEY: some mc'value
+                SOME_OTHER: some other
+              sudo: true
+            - type: shell
+              path: ./test.sh
+```
+
+## Make Your Own
+
+To create your own provisioner, add your provisioner to the entry point `drifter.provisioners` in your `setup.py`.
+
+```python
+from setuptools import setup
+
+setup(
+    name='test_provisioner',
+    version='0.1',
+    packages=['test_provisioner'],
+    entry_points='''
+        [drifter.provisioners]
+        my_thing=test_provisioner:some_cmd
+    ''',
+)
+```
+
+```python
+# test_provisioner/__init__.py
+"""Example provisioner that does nothing."""
+
+def some_cmd(config, servers, settings, verbose=True):
+    """Do some action on the machine.
+
+    :param drifter.config.Config config
+    :param list servers: List of dicts containing server information
+    :param dict settings: Settings for the provisioner
+    :param bool verbose: Whether or not the provisioner should be verbose
+    """
+    pass
+```
+
+See the [built-in provisioners](drifter/provisioners/) as examples.
 
 ----
 

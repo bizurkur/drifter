@@ -16,13 +16,14 @@ from drifter.exceptions import GenericException
 @drifter.commands.verbosity_options
 @drifter.commands.provider_option
 @drifter.commands.provision_option
+@drifter.commands.provision_with_option
 @drifter.commands.pass_config
 @click.pass_context
-def up_command(ctx, config, name, provider, provision):
+def up_command(ctx, config, name, provider, provision, provision_with):
     """Bring up a machine."""
     # Start the named machine only
     if name:
-        _up_command(ctx, config, name, provider, provision)
+        _up_command(ctx, config, name, provider, provision, provision_with)
         return
 
     # Check for multi-machine setup
@@ -45,14 +46,14 @@ def up_command(ctx, config, name, provider, provision):
             continue
         if provider and provider != config.get_machine_default(machine, 'provider', provider):
             continue
-        _up_command(ctx, config, machine, provider, provision, True)
+        _up_command(ctx, config, machine, provider, provision, provision_with, True)
 
 
-def _up_command(ctx, config, name, provider, provision, detect_provider=False):
+def _up_command(ctx, config, name, provider, provision, provision_with, detect_provider=False):
     # Precedence: machine-specific, CLI override, config default, DEFAULT_PROVIDER
     machine_provider = config.get_default('machines.{0}.provider'.format(name), provider)
     if not machine_provider:
-        machine_provider = config.get_default('provider', drifter.providers.DEFAULT_PROVIDER)
+        machine_provider = config.get_default('provider', drifter.providers.get_default_provider())
 
     if not isinstance(machine_provider, str):
         raise GenericException('Provider must be a string; {0} given.'.format(type(machine_provider)))
@@ -74,5 +75,6 @@ def _up_command(ctx, config, name, provider, provision, detect_provider=False):
         args.append('--provision')
     elif provision is False:
         args.append('--no-provision')
+    args += ['--provision-with', provision_with]
 
     drifter.providers.invoke_provider_context(ctx, machine_provider, [name] + args + ctx.args)

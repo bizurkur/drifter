@@ -1,6 +1,7 @@
 """Shared provider functions."""
 from __future__ import absolute_import, division, print_function
 
+import os
 from functools import update_wrapper
 
 import click
@@ -11,6 +12,11 @@ from drifter.exceptions import ProviderException
 
 
 DEFAULT_PROVIDER = 'virtualbox'
+
+
+def get_default_provider():
+    """Get the default provider to use."""
+    return os.environ.get('DRIFTER_PROVIDER', DEFAULT_PROVIDER)
 
 
 def pass_provider(func):
