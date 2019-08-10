@@ -1,18 +1,16 @@
 """Provision a machine using a shell script."""
 from __future__ import absolute_import, division, print_function
 
-import re
-
 import drifter.commands.ssh as base_ssh
 from drifter.exceptions import GenericException
 
 
-def run(config, servers, provisioner, verbose=True):
+def shell(config, servers, settings, verbose=True):
     """Run the shell script provisioner."""
-    if 'path' in provisioner:
-        command = provisioner['path']
-    elif 'inline' in provisioner:
-        command = provisioner['inline']
+    if 'path' in settings:
+        command = settings['path']
+    elif 'inline' in settings:
+        command = settings['inline']
     else:
         raise GenericException(
             'Shell provisioners must define a "path" or "inline" command to run.',
@@ -20,16 +18,16 @@ def run(config, servers, provisioner, verbose=True):
 
     # Build list of environment variables
     exports = ''.join(
-        ['export {0}="{1}"; '.format(k, v) for k, v in provisioner.get('env', {}).items()],
+        ['export {0}="{1}"; '.format(k, v) for k, v in settings.get('env', {}).items()],
     )
     command = exports + command
 
     # Run command as privileged user
-    sudo = provisioner.get('sudo', False)
+    sudo = settings.get('sudo', False)
     if sudo:
         # Escape quotes to prevent errors; ' becomes '"'"'
         command = "sudo -- sh -c '{0}'".format(
-            re.sub(r'\'', '\'"\'"\'', command),
+            command.replace('\'', '\'"\'"\''),
         )
 
     base_ssh.do_ssh(config, servers, command=command, verbose=verbose)

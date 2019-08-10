@@ -6,9 +6,9 @@ import logging
 import click
 
 import drifter.commands
-import drifter.commands.provisioners
 from drifter.exceptions import GenericException
 from drifter.providers import invoke_provider_context
+from drifter.provisioners import get_provisioners
 
 
 @click.command(context_settings={
@@ -43,27 +43,19 @@ def do_provision(config, servers, provisioners=None, verbose=True):
     if not provisioners:
         return
 
+    privisioner_map = get_provisioners()
+
     for server in servers:
         for provisioner in provisioners:
             kind = provisioner.get('type', None)
             name = provisioner.get('name', kind)
 
-            if name:
-                logging.info('==> Running "%s" provisioner...', name)
-
-            try:
-                module = __import__(
-                    'drifter.commands.provisioners.{0}'.format(kind),
-                    fromlist=['drifter.commands.provisioners'],
-                )
-            except ImportError:
+            if kind not in privisioner_map:
                 raise GenericException(
                     'Provisioner of type "{0}" is unknown.'.format(kind),
                 )
 
-            if not getattr(module, 'run', None):
-                raise GenericException(
-                    'Provisioner of type "{0}" does not define a run command.'.format(name),
-                )
+            if name:
+                logging.info('==> Running "%s" provisioner...', name)
 
-            module.run(config, [server], provisioner, verbose)
+            privisioner_map[kind].load()(config, [server], provisioner, verbose)

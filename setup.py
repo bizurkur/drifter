@@ -31,5 +31,8 @@ setup(
         drifter=drifter.cli:main
         [drifter.providers]
         virtualbox=drifter.providers.virtualbox:virtualbox
+        [drifter.provisioners]
+        rsync=drifter.provisioners.rsync:rsync
+        shell=drifter.provisioners.shell:shell
     '''
 )
