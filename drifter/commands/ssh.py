@@ -21,6 +21,8 @@ from drifter.utils import get_cli
 @click.pass_context
 def ssh(ctx, config, name, command):
     """Open a Secure Shell to a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     if not name:
         machines = drifter.commands.list_machines(config)
         name = machines.pop()

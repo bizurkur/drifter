@@ -18,6 +18,8 @@ from drifter.providers import invoke_provider_context
 @click.pass_context
 def destroy(ctx, config, name, force):
     """Destroy a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Destroy the named machine only
     if name:
         _destroy(ctx, config, name, force)

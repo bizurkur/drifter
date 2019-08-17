@@ -22,6 +22,8 @@ from drifter.provisioners import get_provisioners
 @click.pass_context
 def provision(ctx, config, name, provision_with):
     """Provision a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Provision the named machine only
     if name:
         _provision(ctx, config, name, provision_with)

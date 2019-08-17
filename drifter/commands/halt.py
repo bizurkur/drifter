@@ -17,6 +17,8 @@ from drifter.providers import invoke_provider_context
 @click.pass_context
 def halt(ctx, config, name):
     """Halt a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Halt the named machine only
     if name:
         _halt(ctx, config, name)

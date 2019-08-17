@@ -21,6 +21,8 @@ from drifter.exceptions import GenericException
 @click.pass_context
 def up_command(ctx, config, name, provider, provision, provision_with):
     """Bring up a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Start the named machine only
     if name:
         _up_command(ctx, config, name, provider, provision, provision_with)
