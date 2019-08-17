@@ -23,10 +23,21 @@ def ssh(ctx, config, name, command):
     """Open a Secure Shell to a machine."""
     name = drifter.commands.validate_name(ctx, name)
 
-    if not name:
+    # If there's no command and no name, open SSH to first machine
+    if not name and not command:
         machines = drifter.commands.list_machines(config)
         name = machines.pop()
 
+    if name:
+        _ssh(ctx, config, name, command)
+        return
+
+    # Run an SSH command on all machines
+    for machine in drifter.commands.list_machines(config):
+        _ssh(ctx, config, machine, command)
+
+
+def _ssh(ctx, config, name, command):
     provider = config.get_provider(name)
     invoke_provider_context(ctx, provider, [name, '-c', command] + ctx.args)
 
