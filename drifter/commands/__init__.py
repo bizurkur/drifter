@@ -14,6 +14,20 @@ from pkg_resources import iter_entry_points
 from drifter.providers import get_providers
 
 
+def validate_name(ctx, name):
+    """Validate the name isn't really an option.
+
+    Different providers can have different options but the base command
+    sometimes parses the name wrong.
+    """
+    if name and name[0] == '-':
+        ctx.args = [name] + ctx.args
+
+        return None
+
+    return name
+
+
 def no_machine_warning():
     """Warn that no machines exist and die."""
     logging.warning(
@@ -96,7 +110,7 @@ def provision_option(func):
 
 def provision_with_option(func):
     """Add a provision-with option."""
-    return click.option('--provision-with',
+    return click.option('--provision-with', metavar='PROVISIONER',
                         help='Specific provisioner to run on the machine.',
                         default=None)(func)
 

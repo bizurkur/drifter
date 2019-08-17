@@ -17,6 +17,8 @@ from drifter.providers import invoke_provider_context
 @click.pass_context
 def status(ctx, config, name):
     """Get the status of a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Get the status of the named machine only
     if name:
         _status(ctx, config, name)

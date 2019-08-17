@@ -23,6 +23,8 @@ from drifter.utils import get_cli
 @click.pass_context
 def rsync(ctx, config, name, command):
     """Rsync files to a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     # Rsync to the named machine only
     if name:
         _rsync(ctx, config, name, command)

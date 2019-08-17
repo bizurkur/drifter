@@ -29,6 +29,8 @@ from drifter.providers import invoke_provider_context
 @click.pass_context
 def rsync_auto(ctx, config, name, command):
     """Automatically rsync files to a machine."""
+    name = drifter.commands.validate_name(ctx, name)
+
     if not name:
         machines = drifter.commands.list_machines(config)
         name = machines.pop()
