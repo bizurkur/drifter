@@ -110,7 +110,7 @@ def provision_option(func):
 
 def provision_with_option(func):
     """Add a provision-with option."""
-    return click.option('--provision-with',
+    return click.option('--provision-with', metavar='PROVISIONER',
                         help='Specific provisioner to run on the machine.',
                         default=None)(func)
 
