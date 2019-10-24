@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/bizurkur/drifter.svg?branch=master)](https://travis-ci.org/bizurkur/drifter)
 ![pylint Score](https://mperlet.github.io/pybadge/badges/10.svg)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/bizurkur/drifter.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizurkur/drifter/alerts/)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/bizurkur/drifter.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizurkur/drifter/context:python)
 
 Easy and dynamic machine creation.
 
