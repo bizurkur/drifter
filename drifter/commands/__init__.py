@@ -46,7 +46,7 @@ def list_machines(config, provider=None):
     if machines:
         return machines
 
-    return no_machine_warning()
+    no_machine_warning()
 
 
 def name_argument(func):
