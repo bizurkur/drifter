@@ -95,4 +95,4 @@ def do_ssh(config, servers, additional_args=None, command=None, filelist=None, v
         servers[0]['ssh_port'],
     ]
 
-    return os.execvp('ssh', list(map(str, base_command)))
+    os.execvp('ssh', list(map(str, base_command)))
