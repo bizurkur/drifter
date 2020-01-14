@@ -27,7 +27,7 @@ def shell(config, servers, settings, verbose=True):
     if sudo:
         # Escape quotes to prevent errors; ' becomes '"'"'
         command = "sudo -- sh -c '{0}'".format(
-            command.replace('\'', '\'"\'"\''),
+            command.replace("'", '\'"\'"\''),
         )
 
     base_ssh.do_ssh(config, servers, command=command, verbose=verbose)
