@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import os
-from time import gmtime, sleep, strftime
+from time import sleep
 
 import click
 
@@ -111,7 +111,7 @@ def _up_command(provider, config, name, provision, provision_with, base, memory,
     ports = ports or settings.get('network', {}).get('nat', {}).get('ports', _ports)
 
     logging.info('==> Starting machine...')
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     provider.start(real_name, head, memory, mac, ports)
 
     _do_up_provision(provider, config, name, provision, provision_with)
@@ -131,7 +131,7 @@ def _do_up_provision(provider, config, name, provision, provision_with):
         return
 
     # Do provision
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     server = provider.get_server_data(real_name)
     while True:
         logging.info('==> Checking if SSH connection is alive...')
@@ -145,7 +145,7 @@ def _do_up_provision(provider, config, name, provision, provision_with):
 
 def _ensure_machine_exists(provider, config, name, base, head, memory, mac, ports):
     """Create a machine, if it doesn't already exist."""
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     if provider.load_machine(real_name, True):
         return
 
@@ -221,7 +221,7 @@ def _provision(provider, config, name, provision_with=None):
 
     logging.info(click.style('Provisioning machine "%s"...', bold=True), name)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     provider.load_machine(real_name)
 
     server = provider.get_server_data(real_name)
@@ -262,7 +262,7 @@ def _destroy(provider, config, name, force, require=True):
 
     logging.info(click.style('Destroying machine "%s"...', bold=True), name)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     if provider.load_machine(real_name, True):
         provider.destroy(real_name)
 
@@ -292,7 +292,7 @@ def _halt(provider, config, name):
 
     logging.info(click.style('Halting machine "%s"...', bold=True), name)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     provider.load_machine(real_name)
     provider.stop(real_name)
 
@@ -314,7 +314,7 @@ def status(provider, config, name):
 
 def _status(provider, config, name):
     settings = config.get_machine(name)
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     provider.load_machine(real_name)
 
     output = [
@@ -350,7 +350,7 @@ def ssh(ctx, provider, config, name, command):
 
     _require_running_machine(config, name, provider)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     server = provider.get_server_data(real_name)
 
     verbose = True
@@ -381,7 +381,7 @@ def rsync(ctx, provider, config, name, command):
 def _rsync(ctx, provider, config, name, command):
     _require_running_machine(config, name, provider)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     server = provider.get_server_data(real_name)
 
     logging.info(click.style('Rsyncing to machine "%s"...', bold=True), name)
@@ -411,7 +411,7 @@ def rsync_auto(ctx, provider, config, name, command, run_once, burst_limit):
 
     _require_running_machine(config, name, provider)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     server = provider.get_server_data(real_name)
 
     verbose = True
@@ -431,20 +431,7 @@ def _require_machine(config, name):
 def _require_running_machine(config, name, provider):
     _require_machine(config, name)
 
-    real_name = _get_machine_name(config, name)
+    real_name = config.get_unique_name(name)
     provider.load_machine(real_name)
     if not provider.is_running(real_name):
         raise VirtualBoxException('Machine is not in a started state.')
-
-
-def _get_machine_name(config, name):
-    """Get the real name of the machine."""
-    if config.has_machine(name):
-        settings = config.get_machine(name)
-
-        return settings.get('name', name)
-
-    project = os.path.basename(config.base_dir.rstrip(os.sep))
-    timestamp = strftime('%H%M%S', gmtime())
-
-    return '{0}_{1}_{2}'.format(project, name, timestamp)

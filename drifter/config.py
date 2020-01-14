@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sys
+from time import gmtime, strftime
 
 import click
 
@@ -86,6 +87,18 @@ class Config(object):
                 handle.write(unicode(data))
             else:
                 handle.write(data)
+
+    def get_unique_name(self, name):
+        """Get the real name of the machine."""
+        if self.has_machine(name):
+            settings = self.get_machine(name)
+
+            return settings.get('name', name)
+
+        project = os.path.basename(self.base_dir.rstrip(os.sep))
+        timestamp = strftime('%H%M%S', gmtime())
+
+        return '{0}_{1}_{2}'.format(project, name, timestamp)
 
     def add_machine(self, name, settings):
         """Add a machine."""
